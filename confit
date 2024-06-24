@@ -22,9 +22,9 @@ class ConfGroup:
                  name: str,
                  dest: Path,
                  files: list[tuple[str, str]],
-                 diff_include: list[str] | None = None,
-                 diff_exclude: list[str] | None = None,
-                 config_cmds: list[tuple[str, str]] | None = None,
+                 diff_include: list[str] = list(),
+                 diff_exclude: list[str] = list(),
+                 config_cmds: list[tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
         - 'name': the name of this configuration group
@@ -351,8 +351,8 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                         # destination can be a command value
                         dest=Path(resolve_cmd_value(value['dest'])),
                         files=[(src, dst) for src, dst in value['files']],
-                        diff_include=value.get('diff_include', None),
-                        diff_exclude=value.get('diff_exclude', None),
+                        diff_include=value.get('diff_include', []),
+                        diff_exclude=value.get('diff_exclude', []),
                         config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
                         max_backups=value.get('max_backups', 5)
                     )
