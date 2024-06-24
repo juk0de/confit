@@ -1,0 +1,493 @@
+#! /bin/env python3
+"""
+Manage configuration files and tools. Organize them into groups.
+"""
+import os
+import sys
+import argparse
+import subprocess
+import difflib
+import shutil
+import yaml
+from pathlib import Path
+from datetime import datetime
+
+
+class ConfitError(Exception):
+    pass
+
+
+class ConfGroup:
+    def __init__(self,
+                 name: str,
+                 dest: Path,
+                 files: list[tuple[str, str]],
+                 diff_include: list[str] | None = None,
+                 diff_exclude: list[str] | None = None,
+                 config_cmds: list[tuple[str, str]] | None = None,
+                 max_backups: int = 5) -> None:
+        """
+        - 'name': the name of this configuration group
+        - 'dest': the destination path (all other paths are considered
+                  to be relative to the destination path)
+        - 'files': a list of tuples of the source and destination files
+        - 'diff_include': list of source files to include when diff'ing
+        - 'diff_exclude': list of source files to exclude when diff'ing
+        - 'config_cmds': list of tuples, each containing a command and
+                            the working directory to execute it (relative
+                            to the destination path)
+        - 'max_backups': max. nr. of backups to keep
+        """
+        self.name = name
+        self.dest = dest
+        self.files = files
+        self.diff_include = diff_include
+        self.diff_exclude = diff_exclude
+        self.config_cmds = config_cmds
+        self.max_backups = max_backups
+
+    def backup(self) -> None:
+        """
+        Back up existing files by renaming them. Renaming is done by appending a suffix
+        consisting of '.ba' + timestamp (corresponding to the last modification time).
+        Retains a maximum of 5 backup files (the oldest is deleted).
+        """
+        print(f"=> Backing up '{self.name}'")
+        for src, dst in self.files:
+            dst_path = self.dest / dst
+            if dst_path.exists():
+                timestamp = datetime.fromtimestamp(dst_path.stat().st_mtime).strftime('%Y-%m-%d-%H:%M:%S')
+                backup_path = dst_path.with_suffix(f'.ba.{timestamp}')
+                if backup_path.exists():
+                    if dst_path.is_file():
+                        print(f"Skipping backup for {dst_path} as backup with same timestamp exists.")
+                        continue
+                    else:
+                        counter = 1
+                        while backup_path.exists():
+                            backup_path = dst_path.with_suffix(f'.ba.{timestamp}.{counter}')
+                            counter += 1
+                dst_path.rename(backup_path)
+
+                # respect the max. nr. of backups
+                backups = sorted(dst_path.parent.glob(f"{dst_path.name}.ba.*"),
+                                 key=lambda p: p.stat().st_mtime)
+                if len(backups) > self.max_backups:
+                    for old_backup in backups[:-self.max_backups]:
+                        old_backup.unlink()
+
+    def install(self, force: bool = False) -> None:
+        """
+        Install all files of the current group by copying them to their destination.
+        Expect the target to NOT exist (because it's renamed during backup). If it
+        exists, raise an exception. If 'force' is true, overwrite the destination.
+        """
+
+        print(f"=> Installing '{self.name}'")
+        for src, dst in self.files:
+            dst_path = self.dest / dst
+            if dst_path.exists() and not force:
+                raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
+            self._do_copy(Path(src), dst_path)
+
+    def configure(self) -> None:
+        """
+        If this groups has a 'config_cmds' list, each command is executed in the
+        according working directory.
+        """
+        if self.config_cmds:
+            print(f"=> Configuring '{self.name}'")
+            for cmd, wdir in self.config_cmds:
+                full_wdir = self.dest / wdir
+                print(f"> Running command '{cmd}' in directory '{full_wdir}'")
+                subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
+
+    def diff(self, verbose: bool = False) -> None:
+        """
+        Compare the installed files of the current group vs the files in this repo.
+        If it's a file, make a unified diff and print it if there's an actual difference.
+        If it's a directory, check if any of the files differ or if any file exists in one but not in the other directory.
+        This is done recursively. In case of differing files, print a unified diff.
+        """
+        if verbose:
+            print(f"=> Diffing '{self.name}'")
+        for src, dst in self.files:
+            dst_path = self.dest / dst
+            src_path = Path(src)
+            # respect include and exclude lists
+            if self.diff_include and not self._is_included(src_path, self.diff_include):
+                continue
+            if self.diff_exclude and self._is_excluded(src_path, self.diff_exclude):
+                continue
+            # diff
+            if not dst_path.exists():
+                print(f"File '{dst_path}' does not exist.")
+            elif dst_path.is_dir():
+                self._diff_directories(src_path, dst_path, verbose)
+            elif dst_path.is_file():
+                self._diff_files(src_path, dst_path, verbose)
+
+    def _do_copy(self, src: Path, dst: Path) -> None:
+        if rsync:
+            if src.is_dir():
+                # add trailing slashes to directories to ensure correct behaviour
+                # NOTE: pathlib always strips trailing `/`
+                subprocess.run([rsync, '-a', f'{src}/', f'{dst}/'], check=True)
+            else:
+                subprocess.run([rsync, '-a', src, dst], check=True)
+        else:
+            if dst.exists() and dst.is_dir():
+                # if destination exists and is a directory, overwrite it
+                # NOTE: with 'cp', we want the source without trailing `/`, in order to
+                # correctly handle symlinks (but it's recommended to add it to the destination)
+                subprocess.run(["cp", "-a", str(src), f'{dst.parent}/'], check=True)
+            else:
+                subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
+
+    def _is_included(self, src_path: Path, incs: list[str]) -> bool:
+        """
+        Check if the given src path is actually included by the given inclusion path.
+        - 'src_path': the path in this repository (relative to the repo root)
+        - 'incs': list of paths in this repositry (relative to the repo root) that
+                  should be included (can be files or directories)
+        """
+        for inc in incs:
+            inc_path = Path(inc)
+            # check if
+            # - the include path and source path are idential, or
+            # - the include path is a parent of the source path
+            #   (e.g if 'vim_ide/vim/UltiSnips/' is included, we want to include everything within too)
+            # - the source path is a parent of the include path
+            #   (e.g if 'vim_ide/vim/UltiSnips/' is included, we need to include 'vim_ide/vim/')
+            if any((src_path == inc_path,
+                    inc_path in src_path.parents,
+                    src_path in inc_path.parents)):
+                return True
+        return False
+
+    def _is_excluded(self, src_path: Path, excs: list[str]) -> bool:
+        """
+        Check if the given src path is actually excluded by the given exclusion paths.
+        """
+        for exc in excs:
+            exc_path = Path(exc)
+            # check if
+            # - the exclude path and source path are idential, or
+            # - the exclude path is a parent of the source path
+            #   (e.g if 'vim_ide/vim/UltiSnips/' is excluded, we want to exclude everything within too)
+            if any((src_path == exc_path,
+                    exc_path in src_path.parents)):
+                return True
+        return False
+
+    def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> None:
+        if verbose:
+            print(f" > Comparing files '{src_file}' and '{dst_file}'")
+        with open(src_file, 'r') as src_f, open(dst_file, 'r') as dst_f:
+            try:
+                src_lines = src_f.readlines()
+                dst_lines = dst_f.readlines()
+                diff = difflib.unified_diff(src_lines, dst_lines, fromfile=str(src_file), tofile=str(dst_file))
+                diff_output = ''.join(diff)
+                if diff_output:
+                    if delta:
+                        process = subprocess.Popen([delta, '--line-numbers'],
+                                                   stdin=subprocess.PIPE,
+                                                   stdout=subprocess.PIPE,
+                                                   stderr=subprocess.PIPE)
+                        stdout, stderr = process.communicate(input=diff_output.encode())
+                        if process.returncode == 0:
+                            print(stdout.decode())
+                        else:
+                            print(f"Delta failed with error: {stderr.decode()}")
+                    else:
+                        print(diff_output)
+            except Exception as e:
+                print(f"Failed to diff '{src_file}' and '{dst_file}': {e}")
+
+    def _diff_directories(self, src_dir: Path, dst_dir: Path, verbose: bool = False) -> None:
+        """
+        Recursively compare directories and print diffs for differing files.
+        """
+        # respect include and exclude lists
+        if self.diff_include and not self._is_included(src_dir, self.diff_include):
+            return
+        if self.diff_exclude and self._is_excluded(src_dir, self.diff_exclude):
+            return
+        if verbose:
+            print(f" > Comparing directories '{src_dir}' and '{dst_dir}'")
+        # compare directories
+        for src_file in src_dir.iterdir():
+            dst_file = dst_dir / src_file.name
+            # diff
+            if src_file.is_dir():
+                if dst_file.exists() and dst_file.is_dir():
+                    self._diff_directories(src_file, dst_file, verbose)
+                else:
+                    print(f"Directory '{src_file}' exists in source but not in destination.")
+            elif src_file.is_file():
+                if dst_file.exists():
+                    self._diff_files(src_file, dst_file, verbose)
+                else:
+                    print(f"File '{src_file}' exists in source but not in destination.")
+        for dst_file in dst_dir.iterdir():
+            src_file = src_dir / dst_file.name
+            if not src_file.exists():
+                print(f"File '{dst_file}' exists in destination but not in source.")
+
+
+# global variables
+confit_files = ['.conf.it', 'conf.it']
+config: dict
+groups: dict[str, ConfGroup]
+delta: str | None
+rsync: str | None
+
+
+def find_delta() -> str | None:
+    """
+    Check if the 'delta' binary is available in the environment and return its full path.
+    """
+    delta_path = shutil.which("delta")
+    if delta_path:
+        return delta_path
+    else:
+        return None
+
+
+def find_rsync() -> str | None:
+    """
+    Check if the 'rsync' binary is available in the environment and return its full path.
+    """
+    rsync_path = shutil.which("rsync")
+    if rsync_path:
+        return rsync_path
+    else:
+        return None
+
+
+def get_hostname() -> str | None:
+    """
+    Determine the hostname of the system.
+    """
+    # read the HOSTNAME environment variable
+    hostname = os.getenv('HOSTNAME')
+    if hostname:
+        return hostname
+    # read the output of `hostname`
+    try:
+        result = subprocess.run(['hostname'], capture_output=True, text=True, check=True)
+        if result.stdout:
+            return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        pass
+    # read `/etc/hostname`
+    try:
+        with open('/etc/hostname', 'r') as file:
+            hostname = file.read().strip()
+            if hostname:
+                return hostname
+    except FileNotFoundError:
+        pass
+
+    return None
+
+
+def is_cmd_value(value: str) -> bool:
+    """
+    Return True if the given value is enclosed in `{{ }}`.
+    """
+    return value.startswith("{{") and value.endswith("}}")
+
+
+def resolve_cmd_value(value: str) -> str:
+    """
+    Execute the shell command encoded in the given value and return the result.
+    If no command is encoded, return the original value.
+    """
+    if not is_cmd_value(value):
+        return value
+    command = value[2:-2].strip()
+    result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+
+def validate_groups(groups: dict) -> None:
+    """
+    Validates the groups by checking the 'files' list. Only the following mappings are allowed:
+    - file <-> file
+    - directory <-> directory
+    """
+    for group_name, group in groups.items():
+        for src, dst in group.files:
+            src_path = Path(src)
+            dst_path = Path(dst)
+            # if one does not exist, it will be created
+            if src_path.exists() and dst_path.exists():
+                if src_path.is_file() and not dst_path.is_file():
+                    raise ConfitError(f"Invalid mapping in group '{group_name}': '{src}' is a file, while '{dst}' is not.")
+                if src_path.is_dir() and not dst_path.is_dir():
+                    raise ConfitError(f"Invalid mapping in group '{group_name}': '{src}' is a directory, while '{dst}' is not.")
+
+
+def load_config() -> tuple[dict, dict[str, ConfGroup]]:
+    """
+    Load settings and configuration groups from the config file.
+    Returns the raw dict and the ConfGroups instances.
+    """
+    for cf in confit_files:
+        confit_file = Path(cf)
+        if confit_file.exists():
+            with open(confit_file, 'r') as file:
+                data = yaml.safe_load(file)
+                groups = {}
+                current_hostname = get_hostname()
+                for key, value in data['groups'].items():
+                    # Check if the 'host' key is present and matches the current hostname
+                    if 'host' in value and value['host'] != current_hostname:
+                        continue
+                    groups[key] = ConfGroup(
+                        name=key,
+                        # destination can be a command value
+                        dest=Path(resolve_cmd_value(value['dest'])),
+                        files=[(src, dst) for src, dst in value['files']],
+                        diff_include=value.get('diff_include', None),
+                        diff_exclude=value.get('diff_exclude', None),
+                        config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
+                        max_backups=value.get('max_backups', 5)
+                    )
+                return (data, groups)
+    raise ConfitError("Could not find a valid 'conf.it' file. This is not a 'confit' repository.")
+
+
+def backup_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'backup' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.backup()
+    else:
+        group = groups[args.group]
+        group.backup()
+
+
+def diff_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'diff' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.diff(verbose=args.verbose)
+    else:
+        group = groups[args.group]
+        group.diff(verbose=args.verbose)
+
+
+def install_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'install' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.backup()
+            group.install()
+            group.configure()
+    else:
+        group = groups[args.group]
+        group.backup()
+        group.install()
+        group.configure()
+
+
+def groups_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'groups' command.
+    """
+    if args.group:
+        group = groups.get(args.group)
+        if group:
+            with open('.confit', 'r') as file:
+                data = yaml.safe_load(file)
+                group_data = data['groups'].get(args.group)
+                if group_data:
+                    print(yaml.dump({args.group: group_data}, default_flow_style=False))
+                else:
+                    print(f"Group '{args.group}' not found in the YAML file.")
+        else:
+            print(f"Group '{args.group}' not found.")
+    else:
+        for group_name in groups.keys():
+            print(group_name)
+
+
+def configure_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'configure' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.configure()
+    else:
+        group = groups[args.group]
+        group.configure()
+
+
+def main() -> None:
+    global config
+    global groups
+    global delta
+    global rsync
+
+    try:
+        config, groups = load_config()
+    except ConfitError as e:
+        print(e)
+        sys.exit(1)
+    rsync = find_rsync()
+    delta = find_delta()
+
+    # main parser
+    parser = argparse.ArgumentParser(description="confit: manage config files and tools, organized by groups")
+    parser.add_argument('--verbose', '-v',
+                        action='store_true',
+                        help="Enable verbose output")
+    # subcommand parsers
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands: install, backup, configure")
+    # command 'install'
+    install_parser = subparsers.add_parser("install",
+                                           aliases=['i'],
+                                           help="Install confit group")
+    install_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to install")
+    install_parser.set_defaults(func=install_cmd)
+    # command 'backup'
+    backup_parser = subparsers.add_parser("backup",
+                                          aliases=['b'],
+                                          help="Backup confit group")
+    backup_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to backup")
+    backup_parser.set_defaults(func=backup_cmd)
+    # command 'configure'
+    configure_parser = subparsers.add_parser("configure",
+                                             aliases=['c'],
+                                             help="Configure confit group")
+    configure_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to configure")
+    configure_parser.set_defaults(func=configure_cmd)
+    # command 'diff'
+    diff_parser = subparsers.add_parser("diff",
+                                        aliases=['d'],
+                                        help="Diff confit group")
+    diff_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to diff")
+    diff_parser.set_defaults(func=diff_cmd)
+    # command 'groups'
+    groups_parser = subparsers.add_parser("groups",
+                                          aliases=['g'],
+                                          help="List all currently known groups")
+    groups_parser.add_argument("group", nargs='?', help="Group name to display details")
+    groups_parser.set_defaults(func=groups_cmd)
+
+    command = parser.parse_args()
+    command.func(command)
+
+
+if __name__ == "__main__":
+    main()

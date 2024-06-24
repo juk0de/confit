@@ -1,0 +1,13 @@
+groups:    
+  example:
+    desc: "example"
+    dest: "/home/user/"
+    files:
+      - ["example/src", "example/dest"]
+    diff_include:
+      - "example/include"
+    diff_exclude:
+      - "example/exclude"
+    config_cmds:
+      - ["example_cmd", "example_dir"]
+    max_backups: 10
