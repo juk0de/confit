@@ -1,7 +1,15 @@
+from importlib.util import spec_from_loader, module_from_spec
+from importlib.machinery import SourceFileLoader
 import pytest
 import tempfile
 from pathlib import Path
-from confit import ConfGroup
+# the magic below is required to load a module without the `.py` extension
+spec = spec_from_loader("confit", SourceFileLoader("confit", "confit"))
+if not spec:
+    raise RuntimeError("Failed to load 'confit' module! Please run tests from the repository root.")
+confit = module_from_spec(spec)
+assert spec.loader
+spec.loader.exec_module(confit)
 
 
 def test_install():
@@ -20,7 +28,7 @@ def test_install():
             f.write("This is a test file.")
 
         # Define the ConfGroup
-        group = ConfGroup(
+        group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
             files=[(str(src_file), "testfile.txt")]
