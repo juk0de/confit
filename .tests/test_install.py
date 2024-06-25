@@ -4,7 +4,7 @@ from pathlib import Path
 from import_confit import confit
 
 
-def test_install_cp():
+def test_install_file_cp():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -40,7 +40,7 @@ def test_install_cp():
             assert content == "This is a test file."
 
 
-def test_install_rsync():
+def test_install_file_rsync():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -77,7 +77,7 @@ def test_install_rsync():
             assert content == "This is a test file."
 
 
-def test_install_if_destination_exists():
+def test_install_if_dest_file_exists_rsync():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
