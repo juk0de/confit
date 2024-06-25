@@ -1,18 +1,7 @@
-from importlib.util import spec_from_loader, module_from_spec
-from importlib.machinery import SourceFileLoader
 import pytest
 import tempfile
 from pathlib import Path
-import sys
-# Add the directory containing the `confit` module to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-spec = spec_from_loader("confit", SourceFileLoader("confit", "confit"))
-if not spec:
-    raise RuntimeError("Failed to load 'confit' module! Please run tests from the repository root.")
-confit = module_from_spec(spec)
-assert spec.loader
-spec.loader.exec_module(confit)
-sys.modules['confit'] = confit
+from import_confit import confit
 
 
 def test_install():
