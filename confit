@@ -391,12 +391,12 @@ def install_cmd(args: argparse.Namespace) -> None:
     if args.group == "all":
         for group in groups.values():
             group.backup()
-            group.install()
+            group.install(force=args.force)
             group.configure()
     else:
         group = groups[args.group]
         group.backup()
-        group.install()
+        group.install(force=args.force)
         group.configure()
 
 
@@ -459,6 +459,7 @@ def main() -> None:
                                            aliases=['i'],
                                            help="Install confit group")
     install_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to install")
+    install_parser.add_argument("--force", "-f", action='store_true', help="Force installation")
     install_parser.set_defaults(func=install_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
