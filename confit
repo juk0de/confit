@@ -45,7 +45,7 @@ class ConfGroup:
         self.config_cmds = config_cmds
         self.max_backups = max_backups
 
-    def backup(self) -> None:
+    def backup(self, verbose: bool = False) -> None:
         """
         Back up existing files by renaming them. Renaming is done by appending a suffix
         consisting of '.ba' + timestamp (corresponding to the last modification time).
@@ -62,18 +62,20 @@ class ConfGroup:
                     while backup_path.exists():
                         backup_path = Path(f'{backup_path}.{counter}')
                         counter += 1
-                print(f"Renaming '{dst_path}' to '{backup_path}'")
+                if verbose:
+                    print(f" > renaming '{dst_path}' to '{backup_path}'")
                 dst_path.rename(backup_path)
-                print(f"Backup created: {backup_path}")
 
                 # respect the max. nr. of backups
                 backups = sorted(dst_path.parent.glob(f"{dst_path.name}.ba.*"),
                                  key=lambda p: p.stat().st_mtime)
                 if len(backups) > self.max_backups:
                     for old_backup in backups[:-self.max_backups]:
+                        if verbose:
+                            print(f" > removing old backup '{old_backup}'")
                         old_backup.unlink()
 
-    def install(self, force: bool = False) -> None:
+    def install(self, force: bool = False, verbose: bool = False) -> None:
         """
         Install all files of the current group by copying them to their destination.
         Expect the target to NOT exist (because it's renamed during backup). If it
@@ -85,9 +87,9 @@ class ConfGroup:
             dst_path = self.dest / dst
             if dst_path.exists() and not force:
                 raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
-            self._do_copy(Path(src), dst_path)
+            self._do_copy(Path(src), dst_path, verbose)
 
-    def configure(self) -> None:
+    def configure(self, verbose: bool = False) -> None:
         """
         If this groups has a 'config_cmds' list, each command is executed in the
         according working directory.
@@ -96,7 +98,8 @@ class ConfGroup:
             print(f"=> Configuring '{self.name}'")
             for cmd, wdir in self.config_cmds:
                 full_wdir = self.dest / wdir
-                print(f"> Running command '{cmd}' in directory '{full_wdir}'")
+                if verbose:
+                    print(f" > executing '{cmd}' in '{full_wdir}'")
                 subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
 
     def diff(self, verbose: bool = False) -> bool:
@@ -114,7 +117,7 @@ class ConfGroup:
             src_path = Path(src)
             # diff
             if not dst_path.exists():
-                print(f"Destination '{dst_path}' does not exist.")
+                print(f" > '{dst_path}' does not exist")
                 diff_found = True
             elif dst_path.is_dir():
                 if self._diff_directories(src_path, dst_path, verbose):
@@ -135,13 +138,14 @@ class ConfGroup:
             src_path = Path(src)
             dst_path = self.dest / dst
             if dst_path.exists():
-                print(f"Synchronizing '{dst_path}' to '{src_path}'")
-                self._do_copy(dst_path, src_path)
-            else:
-                print(f"Destination '{dst_path}' does not exist. Skipping synchronization.")
+                self._do_copy(dst_path, src_path, verbose)
+            elif verbose:
+                print(f" -> '{dst_path}' does not exist, skipping synchronization")
 
-    def _do_copy(self, src: Path, dst: Path) -> None:
+    def _do_copy(self, src: Path, dst: Path, verbose: bool = False) -> None:
         if rsync:
+            if verbose:
+                print(f" > '{src}' -> '{dst}' (rsync)")
             if src.is_dir():
                 # add trailing slashes to directories to ensure correct behaviour
                 # NOTE: pathlib always strips trailing `/`
@@ -149,6 +153,8 @@ class ConfGroup:
             else:
                 subprocess.run([rsync, '-a', src, dst], check=True)
         else:
+            if verbose:
+                print(f" > '{src}' -> '{dst}' (cp)")
             if dst.exists() and dst.is_dir():
                 # if destination exists and is a directory, overwrite it
                 # NOTE: with 'cp', we want the source without trailing `/`, in order to
@@ -348,10 +354,10 @@ def backup_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.backup()
+            group.backup(verbose=args.verbose)
     else:
         group = groups[args.group]
-        group.backup()
+        group.backup(verbose=args.verbose)
 
 
 def diff_cmd(args: argparse.Namespace) -> None:
@@ -372,14 +378,14 @@ def install_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.backup()
-            group.install(force=args.force)
-            group.configure()
+            group.backup(verbose=args.verbose)
+            group.install(force=args.force, verbose=args.verbose)
+            group.configure(verbose=args.verbose)
     else:
         group = groups[args.group]
-        group.backup()
-        group.install(force=args.force)
-        group.configure()
+        group.backup(verbose=args.verbose)
+        group.install(force=args.force, verbose=args.verbose)
+        group.configure(verbose=args.verbose)
 
 
 def groups_cmd(args: argparse.Namespace) -> None:
@@ -409,10 +415,10 @@ def configure_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.configure()
+            group.configure(verbose=args.verbose)
     else:
         group = groups[args.group]
-        group.configure()
+        group.configure(verbose=args.verbose)
 
 
 def main() -> None:
