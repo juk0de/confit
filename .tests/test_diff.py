@@ -27,7 +27,7 @@ def test_diff_no_difference():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the diff
@@ -56,7 +56,7 @@ def test_diff_with_difference():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the diff
@@ -80,7 +80,7 @@ def test_diff_file_missing_in_dest():
         group = confit.ConfGroup(
             name="testgroup",
             dest=tempdir_path / "dst",
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the diff
@@ -121,7 +121,7 @@ def test_diff_directory():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir), "src")]
+            install_files=[(str(src_dir), "src")]
         )
 
         # Perform the diff

@@ -26,7 +26,7 @@ def test_install_file_cp():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the install
@@ -63,7 +63,7 @@ def test_install_file_rsync():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the install
@@ -104,7 +104,7 @@ def test_install_if_dest_file_exists_rsync():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_file), "testfile.txt")]
+            install_files=[(str(src_file), "testfile.txt")]
         )
 
         # Perform the install and expect an exception
@@ -156,7 +156,7 @@ def test_install_directory_cp():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir), "src")]
+            install_files=[(str(src_dir), "src")]
         )
 
         # Perform the install
@@ -222,7 +222,7 @@ def test_install_directory_rsync():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir), "src")]
+            install_files=[(str(src_dir), "src")]
         )
 
         # Perform the install
@@ -293,7 +293,7 @@ def test_install_if_dest_directory_exists_rsync():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir), "src")]
+            install_files=[(str(src_dir), "src")]
         )
 
         # Perform the install and expect an exception

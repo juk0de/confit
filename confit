@@ -21,18 +21,17 @@ class ConfGroup:
     def __init__(self,
                  name: str,
                  dest: Path,
-                 files: list[tuple[str, str]],
-                 diff_include: list[str] = list(),
-                 diff_exclude: list[str] = list(),
+                 install_files: list[tuple[str, str]],
+                 sync_files: list[tuple[str, str]] = list(),
                  config_cmds: list[tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
         - 'name': the name of this configuration group
         - 'dest': the destination path (all other paths are considered
                   to be relative to the destination path)
-        - 'files': a list of tuples of the source and destination files
-        - 'diff_include': list of source files to include when diff'ing
-        - 'diff_exclude': list of source files to exclude when diff'ing
+        - 'install_files': a list of file/directory pairs that should be installed by 'install()`
+        - 'sync_files': a list of file/directory pairs that should be synchronized by 'synchronize()'
+                        (identical to 'install_files' if empty)
         - 'config_cmds': list of tuples, each containing a command and
                             the working directory to execute it (relative
                             to the destination path)
@@ -40,9 +39,9 @@ class ConfGroup:
         """
         self.name = name
         self.dest = dest
-        self.files = files
-        self.diff_include = diff_include
-        self.diff_exclude = diff_exclude
+        self.install_files = install_files
+        # if 'sync_files' is empty, we synchronize everything that is installed
+        self.sync_files = sync_files if sync_files else install_files
         self.config_cmds = config_cmds
         self.max_backups = max_backups
 
@@ -53,7 +52,7 @@ class ConfGroup:
         Retains a maximum of 'max_backup' backup files (the oldest is deleted).
         """
         print(f"=> Backing up '{self.name}'")
-        for src, dst in self.files:
+        for src, dst in self.install_files:
             dst_path = self.dest / dst
             if dst_path.exists():
                 timestamp = datetime.fromtimestamp(dst_path.stat().st_mtime).strftime('%Y-%m-%d-%H:%M:%S')
@@ -82,7 +81,7 @@ class ConfGroup:
         """
 
         print(f"=> Installing '{self.name}'")
-        for src, dst in self.files:
+        for src, dst in self.install_files:
             dst_path = self.dest / dst
             if dst_path.exists() and not force:
                 raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
@@ -111,14 +110,9 @@ class ConfGroup:
         if verbose:
             print(f"=> Diffing '{self.name}'")
         diff_found = False
-        for src, dst in self.files:
+        for src, dst in self.sync_files:
             dst_path = self.dest / dst
             src_path = Path(src)
-            # respect include and exclude lists
-            if self.diff_include and not self._is_included(src_path, self.diff_include):
-                continue
-            if self.diff_exclude and self._is_excluded(src_path, self.diff_exclude):
-                continue
             # diff
             if not dst_path.exists():
                 print(f"Destination '{dst_path}' does not exist.")
@@ -147,42 +141,6 @@ class ConfGroup:
                 subprocess.run(["cp", "-a", str(src), f'{dst.parent}/'], check=True)
             else:
                 subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
-
-    def _is_included(self, src_path: Path, incs: list[str]) -> bool:
-        """
-        Check if the given src path is actually included by the given inclusion path.
-        - 'src_path': the path in this repository (relative to the repo root)
-        - 'incs': list of paths in this repositry (relative to the repo root) that
-                  should be included (can be files or directories)
-        """
-        for inc in incs:
-            inc_path = Path(inc)
-            # check if
-            # - the include path and source path are idential, or
-            # - the include path is a parent of the source path
-            #   (e.g if 'vim_ide/vim/UltiSnips/' is included, we want to include everything within too)
-            # - the source path is a parent of the include path
-            #   (e.g if 'vim_ide/vim/UltiSnips/' is included, we need to include 'vim_ide/vim/')
-            if any((src_path == inc_path,
-                    inc_path in src_path.parents,
-                    src_path in inc_path.parents)):
-                return True
-        return False
-
-    def _is_excluded(self, src_path: Path, excs: list[str]) -> bool:
-        """
-        Check if the given src path is actually excluded by the given exclusion paths.
-        """
-        for exc in excs:
-            exc_path = Path(exc)
-            # check if
-            # - the exclude path and source path are idential, or
-            # - the exclude path is a parent of the source path
-            #   (e.g if 'vim_ide/vim/UltiSnips/' is excluded, we want to exclude everything within too)
-            if any((src_path == exc_path,
-                    exc_path in src_path.parents)):
-                return True
-        return False
 
     def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> bool:
         if verbose:
@@ -217,11 +175,6 @@ class ConfGroup:
         """
         Recursively compare directories and print diffs for differing files.
         """
-        # respect include and exclude lists
-        if self.diff_include and not self._is_included(src_dir, self.diff_include):
-            return False
-        if self.diff_exclude and self._is_excluded(src_dir, self.diff_exclude):
-            return False
         if verbose:
             print(f" > Comparing directories '{src_dir}' and '{dst_dir}'")
         # compare directories
@@ -365,9 +318,8 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                         name=key,
                         # destination can be a command value
                         dest=Path(resolve_cmd_value(value['dest'])),
-                        files=[(src, dst) for src, dst in value['files']],
-                        diff_include=value.get('diff_include', []),
-                        diff_exclude=value.get('diff_exclude', []),
+                        install_files=[(src, dst) for src, dst in value['files']],
+                        sync_files=[(src, dst) for src, dst in value.get('sync_files', [])],
                         config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
                         max_backups=value.get('max_backups', 5)
                     )

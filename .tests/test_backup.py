@@ -28,7 +28,7 @@ def test_backup_file():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir / "testfile.txt"), "testfile.txt")]
+            install_files=[(str(src_dir / "testfile.txt"), "testfile.txt")]
         )
 
         # Perform the backup
@@ -69,8 +69,8 @@ def test_backup_multiple_files():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir / "testfile1.txt"), "testfile1.txt"),
-                   (str(src_dir / "testfile2.txt"), "testfile2.txt")]
+            install_files=[(str(src_dir / "testfile1.txt"), "testfile1.txt"),
+                           (str(src_dir / "testfile2.txt"), "testfile2.txt")]
         )
 
         # Perform the backup
@@ -110,7 +110,7 @@ def test_backup_max_backups():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir / "testfile.txt"), "testfile.txt")],
+            install_files=[(str(src_dir / "testfile.txt"), "testfile.txt")],
             max_backups=3
         )
 
@@ -154,7 +154,7 @@ def test_backup_directory():
         group = confit.ConfGroup(
             name="testgroup",
             dest=dst_dir,
-            files=[(str(src_dir / "subdir"), "subdir")]
+            install_files=[(str(src_dir / "subdir"), "subdir")]
         )
 
         # Perform the backup
