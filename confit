@@ -107,8 +107,7 @@ class ConfGroup:
         This is done recursively. In case of differing files, print a unified diff.
         Return 'True' if differences are found, 'False' otherwise.
         """
-        if verbose:
-            print(f"=> Diffing '{self.name}'")
+        print(f"=> Diffing '{self.name}'")
         diff_found = False
         for src, dst in self.sync_files:
             dst_path = self.dest / dst
@@ -124,6 +123,22 @@ class ConfGroup:
                 if self._diff_files(src_path, dst_path, verbose):
                     diff_found = True
         return diff_found
+
+    def synchronize(self, verbose: bool = False) -> None:
+        """
+        Synchronizes the destination files and directories back to the source
+        (i.e. the 'confit' repository). Note that files missing in the destination
+        are NOT deleted in the repository!
+        """
+        print(f"=> Synchronizing '{self.name}'")
+        for src, dst in self.sync_files:
+            src_path = Path(src)
+            dst_path = self.dest / dst
+            if dst_path.exists():
+                print(f"Synchronizing '{dst_path}' to '{src_path}'")
+                self._do_copy(dst_path, src_path)
+            else:
+                print(f"Destination '{dst_path}' does not exist. Skipping synchronization.")
 
     def _do_copy(self, src: Path, dst: Path) -> None:
         if rsync:
