@@ -57,7 +57,7 @@ def test_install_file_rsync():
 
         # enable rsync for this test
         confit.rsync = confit.find_rsync()
-        assert "rsync" in confit.rsync
+        assert "rsync" in confit.rsync, "Test failed because of missing 'rsync'"
 
         # Define the ConfGroup
         group = confit.ConfGroup(
@@ -77,7 +77,7 @@ def test_install_file_rsync():
             assert content == "This is a test file."
 
 
-def test_install_if_dest_file_exists_rsync():
+def test_install_if_dest_file_exists_cp():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -97,8 +97,8 @@ def test_install_if_dest_file_exists_rsync():
         with open(dst_file, "w") as f:
             f.write("This file already exists.")
 
-        # enable rsync for this test
-        confit.rsync = confit.find_rsync()
+        # disable rsync for this test
+        confit.rsync = None
 
         # Define the ConfGroup
         group = confit.ConfGroup(
@@ -216,7 +216,7 @@ def test_install_directory_rsync():
 
         # enable rsync for this test
         confit.rsync = confit.find_rsync()
-        assert "rsync" in confit.rsync
+        assert "rsync" in confit.rsync, "Test failed because of missing 'rsync'"
 
         # Define the ConfGroup
         group = confit.ConfGroup(
@@ -253,7 +253,7 @@ def test_install_directory_rsync():
             assert content == "This is file 3."
 
 
-def test_install_if_dest_directory_exists_rsync():
+def test_install_if_dest_directory_exists_cp():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -287,7 +287,7 @@ def test_install_if_dest_directory_exists_rsync():
         dst_sub_dir_with_files.mkdir(parents=True)
 
         # enable rsync for this test
-        confit.rsync = confit.find_rsync()
+        confit.rsync = None
 
         # Define the ConfGroup
         group = confit.ConfGroup(
