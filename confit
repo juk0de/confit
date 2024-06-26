@@ -123,7 +123,8 @@ class ConfGroup:
                 continue
             # diff
             if not dst_path.exists():
-                print(f"File '{dst_path}' does not exist.")
+                print(f"Destination '{dst_path}' does not exist.")
+                diff_found = True
             elif dst_path.is_dir():
                 if self._diff_directories(src_path, dst_path, verbose):
                     diff_found = True
