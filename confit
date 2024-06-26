@@ -388,6 +388,30 @@ def install_cmd(args: argparse.Namespace) -> None:
         group.configure(verbose=args.verbose)
 
 
+def configure_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'configure' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.configure(verbose=args.verbose)
+    else:
+        group = groups[args.group]
+        group.configure(verbose=args.verbose)
+
+
+def sync_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'sync' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.synchronize(verbose=args.verbose)
+    else:
+        group = groups[args.group]
+        group.synchronize(verbose=args.verbose)
+
+
 def groups_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'groups' command.
@@ -407,18 +431,6 @@ def groups_cmd(args: argparse.Namespace) -> None:
     else:
         for group_name in groups.keys():
             print(group_name)
-
-
-def configure_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'configure' command.
-    """
-    if args.group == "all":
-        for group in groups.values():
-            group.configure(verbose=args.verbose)
-    else:
-        group = groups[args.group]
-        group.configure(verbose=args.verbose)
 
 
 def main() -> None:
@@ -473,6 +485,12 @@ def main() -> None:
                                           help="List all currently known groups")
     groups_parser.add_argument("group", nargs='?', help="Group name to display details")
     groups_parser.set_defaults(func=groups_cmd)
+    # command 'sync'
+    sync_parser = subparsers.add_parser("sync",
+                                        aliases=['s'],
+                                        help="Synchronize confit group")
+    sync_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to synchronize")
+    sync_parser.set_defaults(func=sync_cmd)
 
     command = parser.parse_args()
     command.func(command)
