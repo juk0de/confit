@@ -50,7 +50,7 @@ class ConfGroup:
         """
         Back up existing files by renaming them. Renaming is done by appending a suffix
         consisting of '.ba' + timestamp (corresponding to the last modification time).
-        Retains a maximum of 5 backup files (the oldest is deleted).
+        Retains a maximum of 'max_backup' backup files (the oldest is deleted).
         """
         print(f"=> Backing up '{self.name}'")
         for src, dst in self.files:

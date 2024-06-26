@@ -127,5 +127,51 @@ def test_backup_max_backups():
         assert len(backups) == 3
 
 
+def test_backup_directory():
+    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir_path = Path(tempdir)
+
+        # Create source and destination directories
+        src_dir = tempdir_path / "src"
+        dst_dir = tempdir_path / "dst"
+        src_dir.mkdir()
+        dst_dir.mkdir()
+
+        # Create subdirectories and files in the destination directory
+        sub_dir = dst_dir / "subdir"
+        sub_dir.mkdir()
+        file1 = sub_dir / "file1.txt"
+        file2 = sub_dir / "file2.txt"
+        with open(file1, "w") as f:
+            f.write("This is file 1.")
+        with open(file2, "w") as f:
+            f.write("This is file 2.")
+
+        # Get the modification times of the directory
+        mod_time = sub_dir.stat().st_mtime
+
+        # Define the ConfGroup
+        group = confit.ConfGroup(
+            name="testgroup",
+            dest=dst_dir,
+            files=[(str(src_dir / "subdir"), "subdir")]
+        )
+
+        # Perform the backup
+        group.backup()
+
+        # Check if the backup files were created correctly
+        timestamp = datetime.fromtimestamp(mod_time).strftime('%Y-%m-%d-%H:%M:%S')
+        backup_dir = dst_dir / f"subdir.ba.{timestamp}"
+        assert backup_dir.exists()
+        # Check if 'backup_dir' contains the same files as 'sub_dir'
+        for src_file in sub_dir.rglob('*'):
+            backup_file = backup_dir / src_file.relative_to(sub_dir)
+            assert backup_file.exists()
+            if src_file.is_file():
+                with open(src_file, "r") as src_f, open(backup_file, "r") as backup_f:
+                    assert src_f.read() == backup_f.read()
+
+
 if __name__ == "__main__":
     pytest.main()
