@@ -102,15 +102,17 @@ class ConfGroup:
                 print(f"> Running command '{cmd}' in directory '{full_wdir}'")
                 subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
 
-    def diff(self, verbose: bool = False) -> None:
+    def diff(self, verbose: bool = False) -> bool:
         """
         Compare the installed files of the current group vs the files in this repo.
         If it's a file, make a unified diff and print it if there's an actual difference.
         If it's a directory, check if any of the files differ or if any file exists in one but not in the other directory.
         This is done recursively. In case of differing files, print a unified diff.
+        Return 'True' if differences are found, 'False' otherwise.
         """
         if verbose:
             print(f"=> Diffing '{self.name}'")
+        diff_found = False
         for src, dst in self.files:
             dst_path = self.dest / dst
             src_path = Path(src)
@@ -123,9 +125,12 @@ class ConfGroup:
             if not dst_path.exists():
                 print(f"File '{dst_path}' does not exist.")
             elif dst_path.is_dir():
-                self._diff_directories(src_path, dst_path, verbose)
+                if self._diff_directories(src_path, dst_path, verbose):
+                    diff_found = True
             elif dst_path.is_file():
-                self._diff_files(src_path, dst_path, verbose)
+                if self._diff_files(src_path, dst_path, verbose):
+                    diff_found = True
+        return diff_found
 
     def _do_copy(self, src: Path, dst: Path) -> None:
         if rsync:
@@ -180,9 +185,10 @@ class ConfGroup:
                 return True
         return False
 
-    def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> None:
+    def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> bool:
         if verbose:
             print(f" > Comparing files '{src_file}' and '{dst_file}'")
+        diff_found = False
         with open(src_file, 'r') as src_f, open(dst_file, 'r') as dst_f:
             try:
                 src_lines = src_f.readlines()
@@ -190,6 +196,7 @@ class ConfGroup:
                 diff = difflib.unified_diff(src_lines, dst_lines, fromfile=str(src_file), tofile=str(dst_file))
                 diff_output = ''.join(diff)
                 if diff_output:
+                    diff_found = True
                     if delta:
                         process = subprocess.Popen([delta, '--line-numbers'],
                                                    stdin=subprocess.PIPE,
@@ -204,16 +211,18 @@ class ConfGroup:
                         print(diff_output)
             except Exception as e:
                 print(f"Failed to diff '{src_file}' and '{dst_file}': {e}")
+        return diff_found
 
-    def _diff_directories(self, src_dir: Path, dst_dir: Path, verbose: bool = False) -> None:
+    def _diff_directories(self, src_dir: Path, dst_dir: Path,
+                          diff_found: bool = False, verbose: bool = False) -> bool:
         """
         Recursively compare directories and print diffs for differing files.
         """
         # respect include and exclude lists
         if self.diff_include and not self._is_included(src_dir, self.diff_include):
-            return
+            return False
         if self.diff_exclude and self._is_excluded(src_dir, self.diff_exclude):
-            return
+            return False
         if verbose:
             print(f" > Comparing directories '{src_dir}' and '{dst_dir}'")
         # compare directories
@@ -222,18 +231,25 @@ class ConfGroup:
             # diff
             if src_file.is_dir():
                 if dst_file.exists() and dst_file.is_dir():
-                    self._diff_directories(src_file, dst_file, verbose)
+                    # make recursive call with the current 'diff_found' to keep the state
+                    diff_found = self._diff_directories(src_file, dst_file, diff_found, verbose)
                 else:
+                    diff_found = True
                     print(f"Directory '{src_file}' exists in source but not in destination.")
             elif src_file.is_file():
                 if dst_file.exists():
-                    self._diff_files(src_file, dst_file, verbose)
+                    # never set 'diff_found' to False, it may already be True
+                    if self._diff_files(src_file, dst_file, verbose):
+                        diff_found = True
                 else:
                     print(f"File '{src_file}' exists in source but not in destination.")
+                    diff_found = True
         for dst_file in dst_dir.iterdir():
             src_file = src_dir / dst_file.name
             if not src_file.exists():
                 print(f"File '{dst_file}' exists in destination but not in source.")
+                diff_found = True
+        return diff_found
 
 
 # global variables
