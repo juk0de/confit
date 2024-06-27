@@ -8,6 +8,7 @@ import argparse
 import subprocess
 import difflib
 import shutil
+import itertools
 import yaml
 from pathlib import Path
 from datetime import datetime
@@ -120,7 +121,7 @@ class ConfGroup:
                 print(f" > '{dst_path}' does not exist")
                 diff_found = True
             elif not src_path.exists():
-                print(f" > '{src_path}' does not exist")
+                print(f" > '{src_path}' does not exist in this repo")
                 diff_found = True
             elif dst_path.is_dir():
                 if self._diff_directories(src_path, dst_path, verbose):
@@ -169,6 +170,12 @@ class ConfGroup:
     def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> bool:
         if verbose:
             print(f" > Comparing files '{src_file}' and '{dst_file}'")
+        if src_file.exists() and not dst_file.exists():
+            print(f" > '{src_file}' exists in this repo but not in the destination")
+            return True
+        if dst_file.exists() and not src_file.exists():
+            print(f" > '{dst_file}' exists in the destination but not in this repo")
+            return True
         diff_found = False
         with open(src_file, 'r') as src_f, open(dst_file, 'r') as dst_f:
             try:
@@ -211,19 +218,19 @@ class ConfGroup:
                     diff_found = self._diff_directories(src_file, dst_file, diff_found, verbose)
                 else:
                     diff_found = True
-                    print(f"Directory '{src_file}' exists in source but not in destination.")
+                    print(f"Directory '{src_file}' exists in this repo but not in the destination.")
             elif src_file.is_file():
                 if dst_file.exists():
                     # never set 'diff_found' to False, it may already be True
                     if self._diff_files(src_file, dst_file, verbose):
                         diff_found = True
                 else:
-                    print(f"File '{src_file}' exists in source but not in destination.")
+                    print(f"File '{src_file}' exists in this repo but not in the destination.")
                     diff_found = True
         for dst_file in dst_dir.iterdir():
             src_file = src_dir / dst_file.name
             if not src_file.exists():
-                print(f"File '{dst_file}' exists in destination but not in source.")
+                print(f"File '{dst_file}' exists in the destination but not in this repo.")
                 diff_found = True
         return diff_found
 
@@ -311,7 +318,7 @@ def validate_groups(groups: dict) -> None:
     - directory <-> directory
     """
     for group_name, group in groups.items():
-        for src, dst in group.files:
+        for src, dst in itertools.chain(group.install_files, group.sync_files):
             src_path = Path(src)
             dst_path = Path(dst)
             # if one does not exist, it will be created
@@ -353,6 +360,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                         )
                     except KeyError as e:
                         raise ConfitError(f"The following key is missing in ConfGroup '{key}': {e}")
+                validate_groups(groups)
                 return (data, groups)
     raise ConfitError("Could not find a valid 'conf.it' file. This is not a 'confit' repository.")
 
