@@ -349,7 +349,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                             max_backups=value.get('max_backups', 5)
                         )
                     except KeyError as e:
-                        raise ConfitError(f"The following key is missing in ConfGroup '{key}': '{e}'")
+                        raise ConfitError(f"The following key is missing in ConfGroup '{key}': {e}")
                 return (data, groups)
     raise ConfitError("Could not find a valid 'conf.it' file. This is not a 'confit' repository.")
 
