@@ -28,7 +28,7 @@ def test_load_config_valid():
         assert groups["testgroup"].dest == Path("/tmp/dest")
 
 
-def test_load_config_invalid():
+def test_load_config_invalid_syntax():
     with tempfile.TemporaryDirectory() as tempdir:
         config_content = """
         groups:
@@ -40,6 +40,34 @@ def test_load_config_invalid():
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         with pytest.raises(ConfitError):
+            confit.load_config()
+
+
+def test_load_config_invalid_mapping():
+    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir_path = Path(tempdir)
+
+        # Create source and destination directories
+        src_dir = tempdir_path / "src"
+        dst_dir = tempdir_path / "dst"
+        src_dir.mkdir()
+        dst_dir.mkdir()
+
+        # Create a sample file in the source directory
+        src_file = src_dir / "testfile.txt"
+        with open(src_file, "w") as f:
+            f.write("This is a test file.")
+
+        config_content = f"""
+        groups:
+          testgroup:
+            dest: /tmp/dest
+            files:
+              - [{src_file}, {dst_dir}]
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        with pytest.raises(ConfitError, match="Invalid mapping in group 'testgroup'"):
             confit.load_config()
 
 
