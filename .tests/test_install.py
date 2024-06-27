@@ -286,7 +286,7 @@ def test_install_if_dest_directory_exists_cp():
         dst_sub_dir_empty.mkdir(parents=True)
         dst_sub_dir_with_files.mkdir(parents=True)
 
-        # enable rsync for this test
+        # disable rsync for this test
         confit.rsync = None
 
         # Define the ConfGroup
