@@ -18,3 +18,4 @@ confit = module_from_spec(spec)
 assert spec.loader
 spec.loader.exec_module(confit)
 sys.modules['confit'] = confit
+ConfitError = confit.ConfitError
