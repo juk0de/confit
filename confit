@@ -328,7 +328,10 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
         confit_file = Path(cf)
         if confit_file.exists():
             with open(confit_file, 'r') as file:
-                data = yaml.safe_load(file)
+                try:
+                    data = yaml.safe_load(file)
+                except Exception as e:
+                    raise ConfitError(f"Failed to read '{confit_file}': {e}")
                 groups = {}
                 current_hostname = get_hostname()
                 for key, value in data['groups'].items():
