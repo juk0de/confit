@@ -338,15 +338,18 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                     # Check if the 'host' key is present and matches the current hostname
                     if 'host' in value and value['host'] != current_hostname:
                         continue
-                    groups[key] = ConfGroup(
-                        name=key,
-                        # destination can be a command value
-                        dest=Path(resolve_cmd_value(value['dest'])),
-                        install_files=[(src, dst) for src, dst in value['files']],
-                        sync_files=[(src, dst) for src, dst in value.get('sync_files', [])],
-                        config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
-                        max_backups=value.get('max_backups', 5)
-                    )
+                    try:
+                        groups[key] = ConfGroup(
+                            name=key,
+                            # destination can be a command value
+                            dest=Path(resolve_cmd_value(value['dest'])),
+                            install_files=[(src, dst) for src, dst in value['files']],
+                            sync_files=[(src, dst) for src, dst in value.get('sync_files', [])],
+                            config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
+                            max_backups=value.get('max_backups', 5)
+                        )
+                    except KeyError as e:
+                        raise ConfitError(f"The following key is missing in ConfGroup '{key}': '{e}'")
                 return (data, groups)
     raise ConfitError("Could not find a valid 'conf.it' file. This is not a 'confit' repository.")
 
