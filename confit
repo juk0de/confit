@@ -119,6 +119,9 @@ class ConfGroup:
             if not dst_path.exists():
                 print(f" > '{dst_path}' does not exist")
                 diff_found = True
+            elif not src_path.exists():
+                print(f" > '{src_path}' does not exist")
+                diff_found = True
             elif dst_path.is_dir():
                 if self._diff_directories(src_path, dst_path, verbose):
                     diff_found = True
