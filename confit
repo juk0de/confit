@@ -561,6 +561,12 @@ class GroupChoicesAction(argparse.Action):
 
 
 def main() -> None:
+    # Ensure the script is called from its residing directory
+    script_dir = Path(__file__).resolve().parent
+    current_dir = Path.cwd().resolve()
+    if script_dir != current_dir:
+        print(f"Error: 'confit' must be run from: {script_dir}")
+        sys.exit(1)
     # main parser
     parser = argparse.ArgumentParser(description="confit: manage config files and tools, organized by groups")
     parser.add_argument('--verbose', '-v',
