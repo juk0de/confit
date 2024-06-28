@@ -217,14 +217,20 @@ class ConfGroup:
                 if dst_file.exists() and dst_file.is_dir():
                     # make recursive call with the current 'diff_found' to keep the state
                     diff_found = self._diff_directories(src_file, dst_file, diff_found, verbose)
+                elif dst_file.is_file():
+                    print(f"'{src_file}' is a directory while '{dst_file}' is a file.")
+                    diff_found = True
                 else:
                     diff_found = True
                     print(f"Directory '{src_file}' exists in this repo but not in the destination.")
             elif src_file.is_file():
-                if dst_file.exists():
+                if dst_file.exists() and dst_file.is_file():
                     # never set 'diff_found' to False, it may already be True
                     if self._diff_files(src_file, dst_file, verbose):
                         diff_found = True
+                elif dst_file.is_dir():
+                    print(f"'{src_file}' is a file while '{dst_file}' is a directory.")
+                    diff_found = True
                 else:
                     print(f"File '{src_file}' exists in this repo but not in the destination.")
                     diff_found = True
@@ -350,12 +356,15 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                     if 'host' in value and value['host'] != current_hostname:
                         continue
                     try:
+                        sync_files = None
+                        if 'sync_files' in value:
+                            sync_files = [(src, dst) for src, dst in value['sync_files']]
                         groups[key] = ConfGroup(
                             name=key,
                             # destination can be a command value
                             dest=Path(resolve_cmd_value(value['dest'])),
                             install_files=[(src, dst) for src, dst in value['files']],
-                            sync_files=[(src, dst) for src, dst in value.get('sync_files', None)],
+                            sync_files=sync_files,
                             config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
                             max_backups=value.get('max_backups', 5)
                         )
