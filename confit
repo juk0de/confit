@@ -362,7 +362,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                         # - list of tuples: synchronize file/drectory pairs in the list
                         sync_files = None
                         if 'sync_files' in value:
-                            if len(value['sync_files'] > 0):
+                            if len(value['sync_files']) > 0:
                                 sync_files = [(src, dst) for src, dst in value['sync_files']]
                             else:
                                 sync_files = []
@@ -371,7 +371,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                             name=key,
                             # destination can be a command value
                             dest=Path(resolve_cmd_value(value['dest'])),
-                            install_files=[(src, dst) for src, dst in value['files']],
+                            install_files=[(src, dst) for src, dst in value['install_files']],
                             sync_files=sync_files,
                             config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
                             max_backups=value.get('max_backups', 5)
