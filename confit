@@ -488,10 +488,16 @@ def update_cmd(args: argparse.Namespace) -> None:
     """
     try:
         import pygit2  # type: ignore[import]
-    except ImportError:
-        print("The 'update' command requires the 'pygit2' module, but it has not been found!")
+        import requests
+    except ImportError as e:
+        print(f"The 'update' command requires 'pygit2' and 'requests': {e}")
         sys.exit(1)
 
+    update_files = [
+        ('https://raw.githubusercontent.com/juk0de/confit/master/confit', 'confit'),
+        ]
+
+    # makes sure the repository is NOT dirty
     try:
         repo = pygit2.Repository('.')
         status = repo.status()
@@ -501,6 +507,41 @@ def update_cmd(args: argparse.Namespace) -> None:
     except pygit2.GitError as e:
         print(f"Failed to access the repository: {e}")
         sys.exit(1)
+
+    print("=> Updating")
+    # download the update files
+    for url, local_path in update_files:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            with open(local_path, 'wb') as file:
+                file.write(response.content)
+            print(f"> Updated '{local_path}' from '{url}'")
+        except requests.RequestException as e:
+            print(f"> Failed to download latest version of '{local_path}': {e}")
+            sys.exit(1)
+
+    # commit the changes
+    try:
+        index = repo.index
+        index.add_all()
+        index.write()
+        author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+        committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+        tree = index.write_tree()
+        repo.create_commit(
+            'refs/heads/master',  # the name of the reference to update
+            author,  # the author of the commit
+            committer,  # the committer of the commit
+            'update from upstream',  # the commit message
+            tree,  # the tree object this commit points to
+            [repo.head.target]  # the parents of the new commit
+        )
+        print("> Committed the changes with message 'update from upstream'")
+    except pygit2.GitError as e:
+        print(f"> Failed to commit the changes: {e}")
+        sys.exit(1)
+    print("> UPDATE SUCCESSFUL!")
 
 
 class GroupChoicesAction(argparse.Action):
