@@ -18,7 +18,7 @@ def test_load_config_valid():
         groups:
           testgroup:
             dest: /tmp/dest
-            files:
+            install_files:
               - [src.txt, dst.txt]
         """
         create_config_file(config_content, tempdir)
@@ -28,13 +28,64 @@ def test_load_config_valid():
         assert groups["testgroup"].dest == Path("/tmp/dest")
 
 
+def test_load_config_sync_files_omitted():
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_content = """
+        groups:
+          testgroup:
+            dest: /tmp/dest
+            install_files:
+              - [src.txt, dst.txt]
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        config, groups = confit.load_config()
+        assert "testgroup" in groups
+        assert groups["testgroup"].sync_files == groups["testgroup"].install_files
+
+
+def test_load_config_sync_files_empty():
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_content = """
+        groups:
+          testgroup:
+            dest: /tmp/dest
+            install_files:
+              - [src.txt, dst.txt]
+            sync_files: []
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        config, groups = confit.load_config()
+        assert "testgroup" in groups
+        assert groups["testgroup"].sync_files == []
+
+
+def test_load_config_sync_files_specified():
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_content = """
+        groups:
+          testgroup:
+            dest: /tmp/dest
+            install_files:
+              - [src.txt, dst.txt]
+            sync_files:
+              - [sync_src.txt, sync_dst.txt]
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        config, groups = confit.load_config()
+        assert "testgroup" in groups
+        assert groups["testgroup"].sync_files == [("sync_src.txt", "sync_dst.txt")]
+
+
 def test_load_config_invalid_syntax():
     with tempfile.TemporaryDirectory() as tempdir:
         config_content = """
         groups:
           testgroup:
             dest: /tmp/dest
-            files:
+            install_files:
               - [src.txt, dst.txt
         """
         create_config_file(config_content, tempdir)
@@ -62,7 +113,7 @@ def test_load_config_invalid_mapping():
         groups:
           testgroup:
             dest: /tmp/dest
-            files:
+            install_files:
               - [{src_file}, {dst_dir}]
         """
         create_config_file(config_content, tempdir)
@@ -84,7 +135,7 @@ def test_load_config_with_host_filter(mock_get_hostname):
         groups:
           testgroup:
             dest: /tmp/dest
-            files:
+            install_files:
               - [src.txt, dst.txt]
             host: testhost
         """
@@ -102,7 +153,7 @@ def test_install_with_host_filter_no_match(mock_get_hostname):
         groups:
           testgroup:
             dest: /tmp/dest
-            files:
+            install_files:
               - [src.txt, dst.txt]
             host: testhost
         """
