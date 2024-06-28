@@ -522,25 +522,26 @@ def update_cmd(args: argparse.Namespace) -> None:
             sys.exit(1)
 
     # commit the changes
-    try:
-        index = repo.index
-        index.add_all()
-        index.write()
-        author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
-        committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
-        tree = index.write_tree()
-        repo.create_commit(
-            'refs/heads/master',  # the name of the reference to update
-            author,  # the author of the commit
-            committer,  # the committer of the commit
-            'update from upstream',  # the commit message
-            tree,  # the tree object this commit points to
-            [repo.head.target]  # the parents of the new commit
-        )
-        print("> Committed the changes with message 'update from upstream'")
-    except pygit2.GitError as e:
-        print(f"> Failed to commit the changes: {e}")
-        sys.exit(1)
+    if not args.no_commit:
+        try:
+            index = repo.index
+            index.add_all()
+            index.write()
+            author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+            committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+            tree = index.write_tree()
+            repo.create_commit(
+                'refs/heads/master',  # the name of the reference to update
+                author,  # the author of the commit
+                committer,  # the committer of the commit
+                'update from upstream',  # the commit message
+                tree,  # the tree object this commit points to
+                [repo.head.target]  # the parents of the new commit
+            )
+            print("> Committed the changes with message 'update from upstream'")
+        except pygit2.GitError as e:
+            print(f"> Failed to commit the changes: {e}")
+            sys.exit(1)
     print("> UPDATE SUCCESSFUL!")
 
 
@@ -608,6 +609,8 @@ def main() -> None:
     update_parser = subparsers.add_parser("update",
                                           aliases=['u'],
                                           help="Update the confit binary from upstream")
+    update_parser.add_argument("--no-commit", "-n", action='store_true',
+                               help="Skip automated commit after update")
     update_parser.set_defaults(func=update_cmd)
 
     command = parser.parse_args()
