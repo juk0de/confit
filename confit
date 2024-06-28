@@ -454,15 +454,15 @@ def groups_cmd(args: argparse.Namespace) -> None:
     Handle the 'groups' command.
     """
     if args.group:
+        # If a groups has been specified, print the YAML data
+        # from the config file
         group = groups.get(args.group)
         if group:
-            with open('.confit', 'r') as file:
-                data = yaml.safe_load(file)
-                group_data = data['groups'].get(args.group)
-                if group_data:
-                    print(yaml.dump({args.group: group_data}, default_flow_style=False))
-                else:
-                    print(f"Group '{args.group}' not found in the YAML file.")
+            group_data = config['groups'].get(args.group)
+            if group_data:
+                print(yaml.dump({args.group: group_data}, default_flow_style=False))
+            else:
+                print(f"Group '{args.group}' not found in the confit file.")
         else:
             print(f"Group '{args.group}' not found.")
     else:
