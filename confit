@@ -385,6 +385,18 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
     raise ConfitError("Could not find a valid 'conf.it' file.")
 
 
+def init_globals() -> None:
+    """
+    Initialize the global variables containing the configuration data and ConfGroups.
+    """
+    global config, groups, delta, rsync
+    # don't load the config file multiple times
+    if 'config' not in globals() or 'groups' not in globals():
+        config, groups = load_config()
+        delta = find_delta()
+        rsync = find_rsync()
+
+
 def backup_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'backup' command.
@@ -491,20 +503,22 @@ def update_cmd(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+class GroupChoicesAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        global config, groups
+        try:
+            init_globals()
+        except ConfitError as e:
+            parser.error(str(e))
+        if values == "all":
+            setattr(namespace, self.dest, values)
+        else:
+            if values not in groups:
+                parser.error(f"Invalid choice: '{values}' (choose from {list(groups.keys()) + ['all']})")
+            setattr(namespace, self.dest, values)
+
+
 def main() -> None:
-    global config
-    global groups
-    global delta
-    global rsync
-
-    try:
-        config, groups = load_config()
-    except ConfitError as e:
-        print(e)
-        sys.exit(1)
-    rsync = find_rsync()
-    delta = find_delta()
-
     # main parser
     parser = argparse.ArgumentParser(description="confit: manage config files and tools, organized by groups")
     parser.add_argument('--verbose', '-v',
@@ -516,26 +530,26 @@ def main() -> None:
     install_parser = subparsers.add_parser("install",
                                            aliases=['i'],
                                            help="Install confit group")
-    install_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to install")
+    install_parser.add_argument("group", action=GroupChoicesAction, help="Group to install")
     install_parser.add_argument("--force", "-f", action='store_true', help="Force installation")
     install_parser.set_defaults(func=install_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
                                           aliases=['b'],
                                           help="Backup confit group")
-    backup_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to backup")
+    backup_parser.add_argument("group", action=GroupChoicesAction, help="Group to backup")
     backup_parser.set_defaults(func=backup_cmd)
     # command 'configure'
     configure_parser = subparsers.add_parser("configure",
                                              aliases=['c'],
                                              help="Configure confit group")
-    configure_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to configure")
+    configure_parser.add_argument("group", action=GroupChoicesAction, help="Group to configure")
     configure_parser.set_defaults(func=configure_cmd)
     # command 'diff'
     diff_parser = subparsers.add_parser("diff",
                                         aliases=['d'],
                                         help="Diff confit group")
-    diff_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to diff")
+    diff_parser.add_argument("group", action=GroupChoicesAction, help="Group to diff")
     diff_parser.set_defaults(func=diff_cmd)
     # command 'groups'
     groups_parser = subparsers.add_parser("groups",
@@ -547,7 +561,7 @@ def main() -> None:
     sync_parser = subparsers.add_parser("sync",
                                         aliases=['s'],
                                         help="Synchronize confit group")
-    sync_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to synchronize")
+    sync_parser.add_argument("group", action=GroupChoicesAction, help="Group to synchronize")
     sync_parser.set_defaults(func=sync_cmd)
     # command 'update'
     update_parser = subparsers.add_parser("update",
@@ -556,6 +570,14 @@ def main() -> None:
     update_parser.set_defaults(func=update_cmd)
 
     command = parser.parse_args()
+    # do not read the configuration file for the 'update' function
+    if command.func != update_cmd:
+        try:
+            init_globals()
+        except ConfitError as e:
+            print(e)
+            sys.exit(1)
+
     command.func(command)
 
 
