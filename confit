@@ -516,32 +516,37 @@ def update_cmd(args: argparse.Namespace) -> None:
             response.raise_for_status()
             with open(local_path, 'wb') as file:
                 file.write(response.content)
-            print(f"> Updated '{local_path}' from '{url}'")
+            print(f"> Updated '{local_path}' from '{url}'.")
         except requests.RequestException as e:
             print(f"> Failed to download latest version of '{local_path}': {e}")
             sys.exit(1)
 
-    # commit the changes
-    if not args.no_commit:
-        try:
-            index = repo.index
-            index.add_all()
-            index.write()
-            author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
-            committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
-            tree = index.write_tree()
-            repo.create_commit(
-                'refs/heads/master',  # the name of the reference to update
-                author,  # the author of the commit
-                committer,  # the committer of the commit
-                'update from upstream',  # the commit message
-                tree,  # the tree object this commit points to
-                [repo.head.target]  # the parents of the new commit
-            )
-            print("> Committed the changes with message 'update from upstream'")
-        except pygit2.GitError as e:
-            print(f"> Failed to commit the changes: {e}")
-            sys.exit(1)
+    # commit the changes if there are any
+    try:
+        index = repo.index
+        index.add_all()
+        index.write()
+        if repo.status():
+            if args.no_commit:
+                print("> Files have been updated. Make sure to commit the  changes.")
+            else:
+                author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+                committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
+                tree = index.write_tree()
+                repo.create_commit(
+                    'refs/heads/master',  # the name of the reference to update
+                    author,  # the author of the commit
+                    committer,  # the committer of the commit
+                    'update from upstream',  # the commit message
+                    tree,  # the tree object this commit points to
+                    [repo.head.target]  # the parents of the new commit
+                )
+                print("> Committed the changes with message 'update from upstream'")
+        else:
+            print("> No changes detected, nothing to commit.")
+    except pygit2.GitError as e:
+        print(f"> Failed to commit the changes: {e}")
+        sys.exit(1)
     print("> UPDATE SUCCESSFUL!")
 
 
