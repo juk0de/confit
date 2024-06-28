@@ -20,12 +20,20 @@ def test_load_config_valid():
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
+            check_binaries:
+              - [binary1, description1]
+            config_cmds:
+              - [command1, /tmp]
         """
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        config, groups = confit.load_config()
         assert "testgroup" in groups
         assert groups["testgroup"].dest == Path("/tmp/dest")
+        assert groups["testgroup"].check_binaries == [("binary1", "description1")]
+        assert groups["testgroup"].config_cmds == [("command1", "/tmp")]
 
 
 def test_load_config_sync_files_omitted():
@@ -147,7 +155,7 @@ def test_load_config_with_host_filter(mock_get_hostname):
 
 
 @patch('import_confit.confit.get_hostname', return_value='wronghost')
-def test_install_with_host_filter_no_match(mock_get_hostname):
+def test_load_config_with_host_filter_no_match(mock_get_hostname):
     with tempfile.TemporaryDirectory() as tempdir:
         config_content = """
         groups:
