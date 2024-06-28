@@ -382,7 +382,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                         raise ConfitError(f"Wrong format detected in ConfGroup '{key}': {e}")
                 validate_groups(groups)
                 return (data, groups)
-    raise ConfitError("Could not find a valid 'conf.it' file. This is not a 'confit' repository.")
+    raise ConfitError("Could not find a valid 'conf.it' file.")
 
 
 def backup_cmd(args: argparse.Namespace) -> None:
@@ -470,6 +470,27 @@ def groups_cmd(args: argparse.Namespace) -> None:
             print(group_name)
 
 
+def update_cmd(args: argparse.Namespace) -> None:
+    """
+    Updates the `confit` file using the `pygit2` module.
+    """
+    try:
+        import pygit2  # type: ignore[import]
+    except ImportError:
+        print("The 'update' command requires the 'pygit2' module, but it has not been found!")
+        sys.exit(1)
+
+    try:
+        repo = pygit2.Repository('.')
+        status = repo.status()
+        if status:
+            print("The repository is dirty. Please commit or stash your changes before updating.")
+            sys.exit(1)
+    except pygit2.GitError as e:
+        print(f"Failed to access the repository: {e}")
+        sys.exit(1)
+
+
 def main() -> None:
     global config
     global groups
@@ -528,6 +549,11 @@ def main() -> None:
                                         help="Synchronize confit group")
     sync_parser.add_argument("group", choices=list(groups.keys()) + ["all"], help="Group to synchronize")
     sync_parser.set_defaults(func=sync_cmd)
+    # command 'update'
+    update_parser = subparsers.add_parser("update",
+                                          aliases=['u'],
+                                          help="Update the confit binary from upstream")
+    update_parser.set_defaults(func=update_cmd)
 
     command = parser.parse_args()
     command.func(command)
