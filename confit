@@ -96,8 +96,10 @@ class ConfGroup:
         If this groups has a 'config_cmds' list, each command is executed in the
         according working directory.
         """
-        if self.config_cmds:
-            print(f"=> Configuring '{self.name}'")
+        print(f"=> Configuring '{self.name}'")
+        if len(self.config_cmds) == 0:
+            print(" -> Nothing to do.")
+        else:
             for cmd, wdir in self.config_cmds:
                 full_wdir = self.dest / wdir
                 if verbose:
@@ -114,22 +116,25 @@ class ConfGroup:
         """
         print(f"=> Diffing '{self.name}'")
         diff_found = False
-        for src, dst in self.sync_files:
-            dst_path = self.dest / dst
-            src_path = Path(src)
-            # diff
-            if not dst_path.exists():
-                print(f" > '{dst_path}' does not exist")
-                diff_found = True
-            elif not src_path.exists():
-                print(f" > '{src_path}' does not exist in this repo")
-                diff_found = True
-            elif dst_path.is_dir():
-                if self._diff_directories(src_path, dst_path, verbose):
+        if len(self.sync_files) == 0:
+            print("Nothing to do.")
+        else:
+            for src, dst in self.sync_files:
+                dst_path = self.dest / dst
+                src_path = Path(src)
+                # diff
+                if not dst_path.exists():
+                    print(f" > '{dst_path}' does not exist")
                     diff_found = True
-            elif dst_path.is_file():
-                if self._diff_files(src_path, dst_path, verbose):
+                elif not src_path.exists():
+                    print(f" > '{src_path}' does not exist in this repo")
                     diff_found = True
+                elif dst_path.is_dir():
+                    if self._diff_directories(src_path, dst_path, verbose):
+                        diff_found = True
+                elif dst_path.is_file():
+                    if self._diff_files(src_path, dst_path, verbose):
+                        diff_found = True
         return diff_found
 
     def synchronize(self, verbose: bool = False) -> None:
@@ -139,13 +144,16 @@ class ConfGroup:
         are NOT deleted in the repository!
         """
         print(f"=> Synchronizing '{self.name}'")
-        for src, dst in self.sync_files:
-            src_path = Path(src)
-            dst_path = self.dest / dst
-            if dst_path.exists():
-                self._do_copy(dst_path, src_path, verbose)
-            elif verbose:
-                print(f" -> '{dst_path}' does not exist, skipping synchronization")
+        if len(self.sync_files) == 0:
+            print("Nothing to do.")
+        else:
+            for src, dst in self.sync_files:
+                src_path = Path(src)
+                dst_path = self.dest / dst
+                if dst_path.exists():
+                    self._do_copy(dst_path, src_path, verbose)
+                elif verbose:
+                    print(f" -> '{dst_path}' does not exist, skipping synchronization")
 
     def _do_copy(self, src: Path, dst: Path, verbose: bool = False) -> None:
         if rsync:
