@@ -23,7 +23,7 @@ class ConfGroup:
                  name: str,
                  dest: Path,
                  install_files: list[tuple[str, str]],
-                 sync_files: list[tuple[str, str]] = list(),
+                 sync_files: list[tuple[str, str]] | None = None,
                  config_cmds: list[tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
@@ -41,8 +41,9 @@ class ConfGroup:
         self.name = name
         self.dest = dest
         self.install_files = install_files
-        # if 'sync_files' is empty, we synchronize everything that is installed
-        self.sync_files = sync_files if sync_files else install_files
+        # if 'sync_files' is None, we synchronize everything that is installed
+        # -> if it's empty, we synchronize NOTHING
+        self.sync_files = sync_files if sync_files is not None else install_files
         self.config_cmds = config_cmds
         self.max_backups = max_backups
 
@@ -354,7 +355,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                             # destination can be a command value
                             dest=Path(resolve_cmd_value(value['dest'])),
                             install_files=[(src, dst) for src, dst in value['files']],
-                            sync_files=[(src, dst) for src, dst in value.get('sync_files', [])],
+                            sync_files=[(src, dst) for src, dst in value.get('sync_files', None)],
                             config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
                             max_backups=value.get('max_backups', 5)
                         )
