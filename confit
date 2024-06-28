@@ -25,6 +25,7 @@ class ConfGroup:
                  install_files: list[tuple[str, str]],
                  sync_files: list[tuple[str, str]] | None = None,
                  config_cmds: list[tuple[str, str]] = list(),
+                 check_binaries: list[tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
         - 'name': the name of this configuration group
@@ -33,9 +34,10 @@ class ConfGroup:
         - 'install_files': a list of file/directory pairs that should be installed by 'install()`
         - 'sync_files': a list of file/directory pairs that should be synchronized by 'synchronize()'
                         (identical to 'install_files' if empty)
-        - 'config_cmds': list of tuples, each containing a command and
-                            the working directory to execute it (relative
-                            to the destination path)
+        - 'config_cmds': list of tuples, each containing a command and the working directory
+                         where to execute it (relative to the destination path)
+        - 'check_binaries': list of tuples, each containing the name of a binary that should be in
+                            $PATH and some description (e.g. where to get it).
         - 'max_backups': max. nr. of backups to keep
         """
         self.name = name
@@ -45,6 +47,7 @@ class ConfGroup:
         # -> if it's empty, we synchronize NOTHING
         self.sync_files = sync_files if sync_files is not None else install_files
         self.config_cmds = config_cmds
+        self.check_binaries = check_binaries
         self.max_backups = max_backups
 
     def backup(self, verbose: bool = False) -> None:
@@ -154,6 +157,23 @@ class ConfGroup:
                     self._do_copy(dst_path, src_path, verbose)
                 elif verbose:
                     print(f" -> '{dst_path}' does not exist, skipping synchronization")
+
+    def check(self, verbose: bool = False) -> bool:
+        """
+        Check if the binaries in 'check_binaries' are available in $PATH.
+        Return 'True' if all binaries have been found, 'False' otherwise.
+        """
+        print(f"=> Checking '{self.name}'")
+        all_found = True
+        for binary, description in self.check_binaries:
+            binary_path = shutil.which(binary)
+            print(f" > {binary} ({description}) ... ", end='', flush=True)
+            if binary_path:
+                print("found")
+            else:
+                print("NOT found")
+                all_found = False
+        return all_found
 
     def _do_copy(self, src: Path, dst: Path, verbose: bool = False) -> None:
         if rsync:
@@ -382,6 +402,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                             install_files=[(src, dst) for src, dst in value['install_files']],
                             sync_files=sync_files,
                             config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
+                            check_binaries=[(_bin, desc) for _bin, desc in value.get('check_binaries', [])],
                             max_backups=value.get('max_backups', 5)
                         )
                     except KeyError as e:
