@@ -1,3 +1,4 @@
+# vi: ft=yaml
 groups:    
   example:
     desc: "example"
@@ -9,4 +10,4 @@ groups:
       - ["example/src_file", "example/dest_file"]
     config_cmds:
       - ["example_cmd", "example_dir"]
-    max_backups: 10
+    max_backups: 3
