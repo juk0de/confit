@@ -490,6 +490,18 @@ def sync_cmd(args: argparse.Namespace) -> None:
         group.synchronize(verbose=args.verbose)
 
 
+def check_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'check' command.
+    """
+    if args.group == "all":
+        for group in groups.values():
+            group.check(verbose=args.verbose)
+    else:
+        group = groups[args.group]
+        group.check(verbose=args.verbose)
+
+
 def groups_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'groups' command.
@@ -623,7 +635,7 @@ def main() -> None:
     backup_parser.set_defaults(func=backup_cmd)
     # command 'configure'
     configure_parser = subparsers.add_parser("configure",
-                                             aliases=['c'],
+                                             aliases=['C'],
                                              help="Configure confit group")
     configure_parser.add_argument("group", action=GroupChoicesAction, help="Group to configure")
     configure_parser.set_defaults(func=configure_cmd)
@@ -645,6 +657,12 @@ def main() -> None:
                                         help="Synchronize confit group")
     sync_parser.add_argument("group", action=GroupChoicesAction, help="Group to synchronize")
     sync_parser.set_defaults(func=sync_cmd)
+    # command 'check'
+    check_parser = subparsers.add_parser("check",
+                                         aliases=['c'],
+                                         help="Check confit group")
+    check_parser.add_argument("group", action=GroupChoicesAction, help="Group to check")
+    check_parser.set_defaults(func=check_cmd)
     # command 'update'
     update_parser = subparsers.add_parser("update",
                                           aliases=['u'],
