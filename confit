@@ -271,7 +271,7 @@ class ConfGroup:
 
 
 # global variables
-confit_files = ['.conf.it', 'conf.it']
+confit_files = ['.conf.it', 'conf.it', 'confit.yaml', '.confit.yaml']
 config: dict
 groups: dict[str, ConfGroup]
 delta: str | None
