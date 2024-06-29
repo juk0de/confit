@@ -24,7 +24,7 @@ class ConfGroup:
                  dest: Path,
                  install_files: list[tuple[str, str]],
                  sync_files: list[tuple[str, str]] | None = None,
-                 config_cmds: list[tuple[str, str]] = list(),
+                 post_install_cmds: list[tuple[str, str]] = list(),
                  check_binaries: list[tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
@@ -34,8 +34,8 @@ class ConfGroup:
         - 'install_files': a list of file/directory pairs that should be installed by 'install()`
         - 'sync_files': a list of file/directory pairs that should be synchronized by 'synchronize()'
                         (identical to 'install_files' if empty)
-        - 'config_cmds': list of tuples, each containing a command and the working directory
-                         where to execute it (relative to the destination path)
+        - 'post_install_cmds': list of tuples, each containing a command and the working directory
+                               where to execute it (relative to the destination path)
         - 'check_binaries': list of tuples, each containing the name of a binary that should be in
                             $PATH and some description (e.g. where to get it).
         - 'max_backups': max. nr. of backups to keep
@@ -46,7 +46,7 @@ class ConfGroup:
         # if 'sync_files' is None, we synchronize everything that is installed
         # -> if it's empty, we synchronize NOTHING
         self.sync_files = sync_files if sync_files is not None else install_files
-        self.config_cmds = config_cmds
+        self.post_install_cmds = post_install_cmds
         self.check_binaries = check_binaries
         self.max_backups = max_backups
 
@@ -94,16 +94,16 @@ class ConfGroup:
                 raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
             self._do_copy(Path(src), dst_path, verbose)
 
-    def configure(self, verbose: bool = False) -> None:
+    def post_install(self, verbose: bool = False) -> None:
         """
-        If this groups has a 'config_cmds' list, each command is executed in the
+        If this groups has a 'post_install_cmds' list, each command is executed in the
         according working directory.
         """
-        print(f"=> Configuring '{self.name}'")
-        if len(self.config_cmds) == 0:
-            print(" -> Nothing to do.")
+        print(f"=> Running post-install commands for '{self.name}'")
+        if len(self.post_install_cmds) == 0:
+            print(" > Nothing to do.")
         else:
-            for cmd, wdir in self.config_cmds:
+            for cmd, wdir in self.post_install_cmds:
                 full_wdir = self.dest / wdir
                 if verbose:
                     print(f" > executing '{cmd}' in '{full_wdir}'")
@@ -117,10 +117,10 @@ class ConfGroup:
         This is done recursively. In case of differing files, print a unified diff.
         Return 'True' if differences are found, 'False' otherwise.
         """
-        print(f"=> Diffing '{self.name}'")
+        print(f"=> Diff'ing '{self.name}'")
         diff_found = False
         if len(self.sync_files) == 0:
-            print("Nothing to do.")
+            print(" > Nothing to do.")
         else:
             for src, dst in self.sync_files:
                 dst_path = self.dest / dst
@@ -148,7 +148,7 @@ class ConfGroup:
         """
         print(f"=> Synchronizing '{self.name}'")
         if len(self.sync_files) == 0:
-            print("Nothing to do.")
+            print(" > Nothing to do.")
         else:
             for src, dst in self.sync_files:
                 src_path = Path(src)
@@ -408,7 +408,7 @@ def load_config() -> tuple[dict, dict[str, ConfGroup]]:
                             dest=Path(resolve_cmd_value(value['dest'])),
                             install_files=[(src, dst) for src, dst in value['install_files']],
                             sync_files=sync_files,
-                            config_cmds=[(cmd, wdir) for cmd, wdir in value.get('config_cmds', [])],
+                            post_install_cmds=[(cmd, wdir) for cmd, wdir in value.get('post_install_cmds', [])],
                             check_binaries=[(_bin, desc) for _bin, desc in value.get('check_binaries', [])],
                             max_backups=value.get('max_backups', 5)
                         )
@@ -465,24 +465,24 @@ def install_cmd(args: argparse.Namespace) -> None:
         for group in groups.values():
             group.backup(verbose=args.verbose)
             group.install(force=args.force, verbose=args.verbose)
-            group.configure(verbose=args.verbose)
+            group.post_install(verbose=args.verbose)
     else:
         group = groups[args.group]
         group.backup(verbose=args.verbose)
         group.install(force=args.force, verbose=args.verbose)
-        group.configure(verbose=args.verbose)
+        group.post_install(verbose=args.verbose)
 
 
-def configure_cmd(args: argparse.Namespace) -> None:
+def post_install_cmd(args: argparse.Namespace) -> None:
     """
-    Handle the 'configure' command.
+    Handle the 'post_install' command.
     """
     if args.group == "all":
         for group in groups.values():
-            group.configure(verbose=args.verbose)
+            group.post_install(verbose=args.verbose)
     else:
         group = groups[args.group]
-        group.configure(verbose=args.verbose)
+        group.post_install(verbose=args.verbose)
 
 
 def sync_cmd(args: argparse.Namespace) -> None:
@@ -626,7 +626,7 @@ def main() -> None:
                         action='store_true',
                         help="Enable verbose output")
     # subcommand parsers
-    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands: install, backup, configure")
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands")
     # command 'install'
     install_parser = subparsers.add_parser("install",
                                            aliases=['i'],
@@ -640,12 +640,12 @@ def main() -> None:
                                           help="Backup confit group")
     backup_parser.add_argument("group", action=GroupChoicesAction, help="Group to backup")
     backup_parser.set_defaults(func=backup_cmd)
-    # command 'configure'
-    configure_parser = subparsers.add_parser("configure",
-                                             aliases=['C'],
-                                             help="Configure confit group")
-    configure_parser.add_argument("group", action=GroupChoicesAction, help="Group to configure")
-    configure_parser.set_defaults(func=configure_cmd)
+    # command 'post_install'
+    post_install_parser = subparsers.add_parser("post-install",
+                                                aliases=['pi'],
+                                                help="post-install for confit group")
+    post_install_parser.add_argument("group", action=GroupChoicesAction, help="Target group for post-install commands")
+    post_install_parser.set_defaults(func=post_install_cmd)
     # command 'diff'
     diff_parser = subparsers.add_parser("diff",
                                         aliases=['d'],

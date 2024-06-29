@@ -22,7 +22,7 @@ def test_load_config_valid():
               - [src.txt, dst.txt]
             check_binaries:
               - [binary1, description1]
-            config_cmds:
+            post_install_cmds:
               - [command1, /tmp]
         """
         create_config_file(config_content, tempdir)
@@ -33,7 +33,7 @@ def test_load_config_valid():
         assert "testgroup" in groups
         assert groups["testgroup"].dest == Path("/tmp/dest")
         assert groups["testgroup"].check_binaries == [("binary1", "description1")]
-        assert groups["testgroup"].config_cmds == [("command1", "/tmp")]
+        assert groups["testgroup"].post_install_cmds == [("command1", "/tmp")]
 
 
 def test_load_config_sync_files_omitted():

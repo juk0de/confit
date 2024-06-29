@@ -5,7 +5,7 @@ from import_confit import confit
 import subprocess
 
 
-def test_configure():
+def test_post_install():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -24,11 +24,11 @@ def test_configure():
             name="testgroup",
             dest=dest_dir,
             install_files=[],
-            config_cmds=[("./script.sh", ".")]
+            post_install_cmds=[("./script.sh", ".")]
         )
 
-        # Perform the configure
-        group.configure(verbose=True)
+        # Perform the post_install
+        group.post_install(verbose=True)
 
         # Check if the script was executed correctly
         output_file = dest_dir / "output.txt"
@@ -38,7 +38,7 @@ def test_configure():
             assert content == "Hello, World!\n"
 
 
-def test_configure_with_nonexistent_script():
+def test_post_install_with_nonexistent_script():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
 
@@ -51,12 +51,12 @@ def test_configure_with_nonexistent_script():
             name="testgroup",
             dest=dest_dir,
             install_files=[],
-            config_cmds=[("./nonexistent.sh", ".")]
+            post_install_cmds=[("./nonexistent.sh", ".")]
         )
 
-        # Perform the configure and expect an exception
+        # Perform the post_install and expect an exception
         with pytest.raises(subprocess.CalledProcessError):
-            group.configure(verbose=True)
+            group.post_install(verbose=True)
 
 
 if __name__ == "__main__":
