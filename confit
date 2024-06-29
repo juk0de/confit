@@ -278,6 +278,13 @@ delta: str | None
 rsync: str | None
 
 
+def print_err(*args, **kwargs):
+    """
+    Print the given arguments to stderr.
+    """
+    print(*args, file=sys.stderr, **kwargs)
+
+
 def find_delta() -> str | None:
     """
     Check if the 'delta' binary is available in the environment and return its full path.
@@ -543,10 +550,10 @@ def update_cmd(args: argparse.Namespace) -> None:
         repo = pygit2.Repository('.')
         status = repo.status()
         if status:
-            print("The repository is dirty. Please commit or stash your changes before updating.")
+            print_err("The repository is dirty. Please commit or stash your changes before updating.")
             sys.exit(1)
     except pygit2.GitError as e:
-        print(f"Failed to access the repository: {e}")
+        print_err(f"Failed to access the repository: {e}")
         sys.exit(1)
 
     print("=> Updating")
@@ -559,7 +566,7 @@ def update_cmd(args: argparse.Namespace) -> None:
                 file.write(response.content)
             print(f"> Updated '{local_path}' from '{url}'.")
         except requests.RequestException as e:
-            print(f"> Failed to download latest version of '{local_path}': {e}")
+            print_err(f"> Failed to download latest version of '{local_path}': {e}")
             sys.exit(1)
 
     # commit the changes if there are any
@@ -586,7 +593,7 @@ def update_cmd(args: argparse.Namespace) -> None:
         else:
             print("> No changes detected, nothing to commit.")
     except pygit2.GitError as e:
-        print(f"> Failed to commit the changes: {e}")
+        print_err(f"> Failed to commit the changes: {e}")
         sys.exit(1)
     print("> UPDATE SUCCESSFUL!")
 
@@ -611,7 +618,7 @@ def main() -> None:
     script_dir = Path(__file__).resolve().parent
     current_dir = Path.cwd().resolve()
     if script_dir != current_dir:
-        print(f"Error: 'confit' must be run from: {script_dir}")
+        print_err(f"Error: 'confit' must be run from: {script_dir}")
         sys.exit(1)
     # main parser
     parser = argparse.ArgumentParser(description="confit: manage config files and tools, organized by groups")
@@ -677,7 +684,7 @@ def main() -> None:
         try:
             init_globals()
         except ConfitError as e:
-            print(e)
+            print_err(e)
             sys.exit(1)
 
     command.func(command)
