@@ -42,3 +42,10 @@ def test_confit_groups(confit_path):
         result = subprocess.run([confit_binary, 'groups'], capture_output=True, text=True, cwd=tempdir)
         assert result.returncode == 0
         assert "testgroup" in result.stdout
+
+
+def test_confit_wrong_directory(confit_path):
+    with tempfile.TemporaryDirectory() as tempdir:
+        result = subprocess.run([confit_path, '--help'], capture_output=True, text=True, cwd=tempdir)
+        assert result.returncode != 0
+        assert "Error: 'confit' must be run from:" in result.stderr
