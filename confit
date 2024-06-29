@@ -530,7 +530,7 @@ def groups_cmd(args: argparse.Namespace) -> None:
             print(group_name)
 
 
-def update_cmd(args: argparse.Namespace) -> None:
+def update_self_cmd(args: argparse.Namespace) -> None:
     """
     Updates the `confit` file using the `pygit2` module.
     """
@@ -640,7 +640,7 @@ def main() -> None:
                                           help="Backup confit group")
     backup_parser.add_argument("group", action=GroupChoicesAction, help="Group to backup")
     backup_parser.set_defaults(func=backup_cmd)
-    # command 'post_install'
+    # command 'post-install'
     post_install_parser = subparsers.add_parser("post-install",
                                                 aliases=['pi'],
                                                 help="post-install for confit group")
@@ -670,17 +670,17 @@ def main() -> None:
                                          help="Check confit group")
     check_parser.add_argument("group", action=GroupChoicesAction, help="Group to check")
     check_parser.set_defaults(func=check_cmd)
-    # command 'update'
-    update_parser = subparsers.add_parser("update",
-                                          aliases=['u'],
-                                          help="Update the confit binary from upstream")
-    update_parser.add_argument("--no-commit", "-n", action='store_true',
-                               help="Skip automated commit after update")
-    update_parser.set_defaults(func=update_cmd)
+    # command 'update-self'
+    update_self_parser = subparsers.add_parser("update-self",
+                                               aliases=['us'],
+                                               help="Update the confit binary from upstream")
+    update_self_parser.add_argument("--no-commit", "-n", action='store_true',
+                                    help="Skip automated commit after update")
+    update_self_parser.set_defaults(func=update_self_cmd)
 
     command = parser.parse_args()
-    # do not read the configuration file for the 'update' function
-    if command.func != update_cmd:
+    # do not read the configuration file for the 'update-self' function
+    if command.func != update_self_cmd:
         try:
             init_globals()
         except ConfitError as e:
