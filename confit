@@ -85,6 +85,7 @@ class ConfGroup:
                         if verbose:
                             print(f" > removing old backup '{old_backup}'")
                         old_backup.unlink()
+        print(" > DONE")
 
     def install(self, force: bool = False, verbose: bool = False) -> None:
         """
@@ -99,6 +100,7 @@ class ConfGroup:
             if dst_path.exists() and not force:
                 raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
             self._do_copy(Path(src), dst_path, verbose)
+        print(" > DONE")
 
     def post_install(self, verbose: bool = False) -> None:
         """
@@ -114,6 +116,7 @@ class ConfGroup:
                 if verbose:
                     print(f" > executing '{cmd}' in '{full_wdir}'")
                 subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
+            print(" > DONE")
 
     def apply(self, force: bool = False, verbose: bool = False) -> None:
         """
@@ -123,11 +126,15 @@ class ConfGroup:
         """
 
         print(f"=> Applying '{self.name}'")
-        for src, dst in self.sync_files:
-            dst_path = self.dest / dst
-            if dst_path.exists() and not force:
-                raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting apply.")
-            self._do_copy(Path(src), dst_path, verbose)
+        if len(self.sync_files) == 0:
+            print(" > Nothing to do.")
+        else:
+            for src, dst in self.sync_files:
+                dst_path = self.dest / dst
+                if dst_path.exists() and not force:
+                    raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting apply.")
+                self._do_copy(Path(src), dst_path, verbose)
+            print(" > DONE")
 
     def diff(self, verbose: bool = False) -> bool:
         """
@@ -158,6 +165,7 @@ class ConfGroup:
                 elif dst_path.is_file():
                     if self._diff_files(src_path, dst_path, verbose):
                         diff_found = True
+            print(" > DONE")
         return diff_found
 
     def synchronize(self, verbose: bool = False) -> None:
@@ -177,6 +185,7 @@ class ConfGroup:
                     self._do_copy(dst_path, src_path, verbose)
                 elif verbose:
                     print(f" -> '{dst_path}' does not exist, skipping synchronization")
+            print(" > DONE")
 
     def check(self, verbose: bool = False) -> bool:
         """
@@ -193,6 +202,7 @@ class ConfGroup:
             else:
                 print("NOT found")
                 all_found = False
+        print(" > DONE")
         return all_found
 
     def _do_copy(self, src: Path, dst: Path, verbose: bool = False) -> None:
@@ -653,14 +663,16 @@ def main() -> None:
                                            aliases=['i'],
                                            help="Install the given group to its destination")
     install_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
-    install_parser.add_argument("--force", "-f", action='store_true', help="Force installation (even if destination has not been backed up)")
+    install_parser.add_argument("--force", "-f", action='store_true',
+                                help="Force installation (even if destination has not been backed up)")
     install_parser.set_defaults(func=install_cmd)
     # command 'apply'
     apply_parser = subparsers.add_parser("apply",
                                          aliases=['a'],
                                          help="Copy the 'sync_files' of the given group to their destination")
     apply_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
-    apply_parser.add_argument("--force", "-f", action='store_true', help="Force apply (even if destination has not been backed up")
+    apply_parser.add_argument("--force", "-f", action='store_true',
+                              help="Force apply (even if destination has not been backed up")
     apply_parser.set_defaults(func=apply_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
