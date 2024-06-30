@@ -50,14 +50,20 @@ class ConfGroup:
         self.check_binaries = check_binaries
         self.max_backups = max_backups
 
-    def backup(self, verbose: bool = False) -> None:
+    def backup(self, files: str = 'install', verbose: bool = False) -> None:
         """
         Back up existing files by renaming them. Renaming is done by appending a suffix
         consisting of '.ba' + timestamp (corresponding to the last modification time).
         Retains a maximum of 'max_backup' backup files (the oldest is deleted).
         """
         print(f"=> Backing up '{self.name}'")
-        for src, dst in self.install_files:
+        if files == 'install':
+            backup_files = self.install_files
+        elif files == 'sync':
+            backup_files = self.sync_files
+        else:
+            raise ConfitError(f"Got invalid files '{files}' to back up")
+        for src, dst in backup_files:
             dst_path = self.dest / dst
             if dst_path.exists():
                 timestamp = datetime.fromtimestamp(dst_path.stat().st_mtime).strftime('%Y-%m-%d-%H:%M:%S')
