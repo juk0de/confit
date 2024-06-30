@@ -88,9 +88,9 @@ class ConfGroup:
 
     def install(self, force: bool = False, verbose: bool = False) -> None:
         """
-        Install all files of the current group by copying them to their destination.
-        Expect the target to NOT exist (because it's renamed during backup). If it
-        exists, raise an exception. If 'force' is true, overwrite the destination.
+        Copy all 'install_files' of the current group to their destination. Expect the target
+        to NOT exist (because it's renamed during backup). If it exists, raise an exception.
+        If 'force' is true, overwrite the destination.
         """
 
         print(f"=> Installing '{self.name}'")
@@ -114,6 +114,20 @@ class ConfGroup:
                 if verbose:
                     print(f" > executing '{cmd}' in '{full_wdir}'")
                 subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
+
+    def apply(self, force: bool = False, verbose: bool = False) -> None:
+        """
+        Copy all 'sync_files' of the current group to their destination. Expect the target
+        to NOT exist (because it's renamed during backup). If it exists, raise an exception.
+        If 'force' is true, overwrite the destination.
+        """
+
+        print(f"=> Applying '{self.name}'")
+        for src, dst in self.sync_files:
+            dst_path = self.dest / dst
+            if dst_path.exists() and not force:
+                raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting apply.")
+            self._do_copy(Path(src), dst_path, verbose)
 
     def diff(self, verbose: bool = False) -> bool:
         """
@@ -479,40 +493,41 @@ def install_cmd(args: argparse.Namespace) -> None:
         group.post_install(verbose=args.verbose)
 
 
+def apply_cmd(args: argparse.Namespace) -> None:
+    """
+    Handle the 'apply' command.
+    """
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
+            group.backup(files='sync', verbose=args.verbose)
+            group.apply(force=args.force, verbose=args.verbose)
+
+
 def post_install_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'post_install' command.
     """
-    if args.group == "all":
-        for group in groups.values():
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
             group.post_install(verbose=args.verbose)
-    else:
-        group = groups[args.group]
-        group.post_install(verbose=args.verbose)
 
 
 def sync_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'sync' command.
     """
-    if args.group == "all":
-        for group in groups.values():
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
             group.synchronize(verbose=args.verbose)
-    else:
-        group = groups[args.group]
-        group.synchronize(verbose=args.verbose)
 
 
 def check_cmd(args: argparse.Namespace) -> None:
     """
     Handle the 'check' command.
     """
-    if args.group == "all":
-        for group in groups.values():
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
             group.check(verbose=args.verbose)
-    else:
-        group = groups[args.group]
-        group.check(verbose=args.verbose)
 
 
 def groups_cmd(args: argparse.Namespace) -> None:
@@ -636,10 +651,17 @@ def main() -> None:
     # command 'install'
     install_parser = subparsers.add_parser("install",
                                            aliases=['i'],
-                                           help="Install confit group")
-    install_parser.add_argument("group", action=GroupChoicesAction, help="Group to install")
+                                           help="Install the given confit group to its destination")
+    install_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     install_parser.add_argument("--force", "-f", action='store_true', help="Force installation")
     install_parser.set_defaults(func=install_cmd)
+    # command 'apply'
+    apply_parser = subparsers.add_parser("apply",
+                                         aliases=['a'],
+                                         help="apply confit group")
+    apply_parser.add_argument("group", action=GroupChoicesAction, help="Group to apply")
+    apply_parser.add_argument("--force", "-f", action='store_true', help="Force apply")
+    apply_parser.set_defaults(func=apply_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
                                           aliases=['b'],
