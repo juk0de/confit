@@ -136,6 +136,24 @@ class ConfGroup:
                 self._do_copy(Path(src), dst_path, verbose)
             print(" > DONE")
 
+    def synchronize(self, verbose: bool = False) -> None:
+        """
+        Copy the 'sync_files' of the current group from their destination to the confit repo.
+        Note that files missing in the destination are NOT deleted in the repository!
+        """
+        print(f"=> Synchronizing '{self.name}'")
+        if len(self.sync_files) == 0:
+            print(" > Nothing to do.")
+        else:
+            for src, dst in self.sync_files:
+                src_path = Path(src)
+                dst_path = self.dest / dst
+                if dst_path.exists():
+                    self._do_copy(dst_path, src_path, verbose)
+                elif verbose:
+                    print(f" -> '{dst_path}' does not exist, skipping synchronization")
+            print(" > DONE")
+
     def diff(self, verbose: bool = False) -> bool:
         """
         Compare the installed files of the current group vs the files in this repo.
@@ -167,25 +185,6 @@ class ConfGroup:
                         diff_found = True
             print(" > DONE")
         return diff_found
-
-    def synchronize(self, verbose: bool = False) -> None:
-        """
-        Synchronizes the destination files and directories back to the source
-        (i.e. the 'confit' repository). Note that files missing in the destination
-        are NOT deleted in the repository!
-        """
-        print(f"=> Synchronizing '{self.name}'")
-        if len(self.sync_files) == 0:
-            print(" > Nothing to do.")
-        else:
-            for src, dst in self.sync_files:
-                src_path = Path(src)
-                dst_path = self.dest / dst
-                if dst_path.exists():
-                    self._do_copy(dst_path, src_path, verbose)
-                elif verbose:
-                    print(f" -> '{dst_path}' does not exist, skipping synchronization")
-            print(" > DONE")
 
     def check(self, verbose: bool = False) -> bool:
         """
