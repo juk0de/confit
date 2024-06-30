@@ -651,57 +651,57 @@ def main() -> None:
     # command 'install'
     install_parser = subparsers.add_parser("install",
                                            aliases=['i'],
-                                           help="Install the given confit group to its destination")
+                                           help="Install the given group to its destination")
     install_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
-    install_parser.add_argument("--force", "-f", action='store_true', help="Force installation")
+    install_parser.add_argument("--force", "-f", action='store_true', help="Force installation (even if destination has not been backed up)")
     install_parser.set_defaults(func=install_cmd)
     # command 'apply'
     apply_parser = subparsers.add_parser("apply",
                                          aliases=['a'],
-                                         help="apply confit group")
-    apply_parser.add_argument("group", action=GroupChoicesAction, help="Group to apply")
-    apply_parser.add_argument("--force", "-f", action='store_true', help="Force apply")
+                                         help="Copy the 'sync_files' of the given group to their destination")
+    apply_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
+    apply_parser.add_argument("--force", "-f", action='store_true', help="Force apply (even if destination has not been backed up")
     apply_parser.set_defaults(func=apply_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
                                           aliases=['b'],
-                                          help="Backup confit group")
-    backup_parser.add_argument("group", action=GroupChoicesAction, help="Group to backup")
+                                          help="Back up the given group (by renaming the destinations files and folders)")
+    backup_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     backup_parser.set_defaults(func=backup_cmd)
     # command 'post-install'
     post_install_parser = subparsers.add_parser("post-install",
                                                 aliases=['pi'],
-                                                help="post-install for confit group")
-    post_install_parser.add_argument("group", action=GroupChoicesAction, help="Target group for post-install commands")
+                                                help="Run the 'post_install_cmds' of the given group")
+    post_install_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     post_install_parser.set_defaults(func=post_install_cmd)
     # command 'diff'
     diff_parser = subparsers.add_parser("diff",
                                         aliases=['d'],
-                                        help="Diff confit group")
-    diff_parser.add_argument("group", action=GroupChoicesAction, help="Group to diff")
+                                        help="Print unified diff between repo and destination files of the given group")
+    diff_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     diff_parser.set_defaults(func=diff_cmd)
-    # command 'groups'
-    groups_parser = subparsers.add_parser("groups",
-                                          aliases=['g'],
-                                          help="List all currently known groups")
-    groups_parser.add_argument("group", nargs='?', help="Group name to display details")
-    groups_parser.set_defaults(func=groups_cmd)
     # command 'sync'
     sync_parser = subparsers.add_parser("sync",
                                         aliases=['s'],
-                                        help="Synchronize confit group")
-    sync_parser.add_argument("group", action=GroupChoicesAction, help="Group to synchronize")
+                                        help="Copy the 'sync_files' of the given group from their destination to this repo")
+    sync_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     sync_parser.set_defaults(func=sync_cmd)
     # command 'check'
     check_parser = subparsers.add_parser("check",
                                          aliases=['c'],
-                                         help="Check confit group")
-    check_parser.add_argument("group", action=GroupChoicesAction, help="Group to check")
+                                         help="Check for availability of the 'check_binaries' of the given group")
+    check_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
     check_parser.set_defaults(func=check_cmd)
+    # command 'groups'
+    groups_parser = subparsers.add_parser("groups",
+                                          aliases=['g'],
+                                          help="List all known groups or show details about the given one")
+    groups_parser.add_argument("group", nargs='?', help="Group name (for details)")
+    groups_parser.set_defaults(func=groups_cmd)
     # command 'update-self'
     update_self_parser = subparsers.add_parser("update-self",
                                                aliases=['us'],
-                                               help="Update the confit binary from upstream")
+                                               help="Update the confit binary from upstream (and commit them to this repo)")
     update_self_parser.add_argument("--no-commit", "-n", action='store_true',
                                     help="Skip automated commit after update")
     update_self_parser.set_defaults(func=update_self_cmd)
