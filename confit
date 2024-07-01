@@ -27,7 +27,7 @@ class ConfGroup:
                  sync_files: Optional[List[Tuple[str, str]]] = None,
                  post_install_cmds: List[Tuple[str, str]] = list(),
                  check_binaries: List[Tuple[str, str]] = list(),
-                 max_backups: int = 5) -> None:
+                 max_backups: int = 3) -> None:
         """
         - 'name': the name of this configuration group
         - 'dest': the destination path (all other paths are considered
