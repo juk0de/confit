@@ -179,7 +179,7 @@ class ConfGroup:
                 elif dst_path.is_file():
                     if self._diff_files(src_path, dst_path):
                         diff_found = True
-            printq(" > DONE ({} differences found)".format('' if diff_found else 'no'))
+            printq(" > DONE ({}differences found)".format('' if diff_found else 'no '))
         return diff_found
 
     def check(self) -> bool:
@@ -460,21 +460,25 @@ def init_globals() -> None:
         rsync = find_rsync()
 
 
-def backup_cmd(args: argparse.Namespace) -> None:
+def backup_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'backup' command. """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.backup()
+    return 0
 
 
-def diff_cmd(args: argparse.Namespace) -> None:
+def diff_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'diff' command. """
+    diff_found = False
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.diff()
+            if group.diff():
+                diff_found = True
+    return 1 if diff_found else 0
 
 
-def install_cmd(args: argparse.Namespace) -> None:
+def install_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'install' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
@@ -483,39 +487,44 @@ def install_cmd(args: argparse.Namespace) -> None:
             group.install(force=args.no_backup)
             if not args.no_post_install:
                 group.post_install()
+    return 0
 
 
-def apply_cmd(args: argparse.Namespace) -> None:
+def apply_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'apply' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             if not args.no_backup:
                 group.backup(files='sync')
             group.apply(force=args.no_backup)
+    return 0
 
 
-def post_install_cmd(args: argparse.Namespace) -> None:
+def post_install_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'post_install' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.post_install()
+    return 0
 
 
-def sync_cmd(args: argparse.Namespace) -> None:
+def sync_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'sync' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.synchronize()
+    return 0
 
 
-def check_cmd(args: argparse.Namespace) -> None:
+def check_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'check' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.check()
+    return 0
 
 
-def groups_cmd(args: argparse.Namespace) -> None:
+def groups_cmd(args: argparse.Namespace) -> int:
     """ Handle the 'groups' command.  """
     if args.group:
         # If a groups has been specified, print the YAML data
@@ -532,9 +541,10 @@ def groups_cmd(args: argparse.Namespace) -> None:
     else:
         for group_name in groups.keys():
             printq(group_name)
+    return 0
 
 
-def update_self_cmd(args: argparse.Namespace) -> None:
+def update_self_cmd(args: argparse.Namespace) -> int:
     """
     Updates the `confit` file using the `pygit2` module.
     """
@@ -600,6 +610,7 @@ def update_self_cmd(args: argparse.Namespace) -> None:
         printe(f"> Failed to commit the changes: {e}")
         sys.exit(1)
     printq("> UPDATE SUCCESSFUL!")
+    return 0
 
 
 class GroupChoicesAction(argparse.Action):
@@ -704,7 +715,7 @@ def main() -> None:
             printe(e)
             sys.exit(1)
 
-    args.func(args)
+    sys.exit(args.func(args))
 
 
 if __name__ == "__main__":
