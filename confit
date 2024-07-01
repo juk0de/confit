@@ -461,86 +461,62 @@ def init_globals() -> None:
 
 
 def backup_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'backup' command.
-    """
-    if args.group == "all":
-        for group in groups.values():
+    """ Handle the 'backup' command. """
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
             group.backup()
-    else:
-        group = groups[args.group]
-        group.backup()
 
 
 def diff_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'diff' command.
-    """
-    if args.group == "all":
-        for group in groups.values():
+    """ Handle the 'diff' command. """
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
             group.diff()
-    else:
-        group = groups[args.group]
-        group.diff()
 
 
 def install_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'install' command.
-    """
-    if args.group == "all":
-        for group in groups.values():
-            group.backup()
-            group.install(force=args.force)
-            group.post_install()
-    else:
-        group = groups[args.group]
-        group.backup()
-        group.install(force=args.force)
-        group.post_install()
+    """ Handle the 'install' command.  """
+    for group in groups.values():
+        if group.name == args.group or args.group == 'all':
+            if not args.no_backup:
+                group.backup(files='install')
+            group.install(force=args.no_backup)
+            if not args.no_post_install:
+                group.post_install()
 
 
 def apply_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'apply' command.
-    """
+    """ Handle the 'apply' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.backup(files='sync')
-            group.apply(force=args.force)
+            if not args.no_backup:
+                group.backup(files='sync')
+            group.apply(force=args.no_backup)
 
 
 def post_install_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'post_install' command.
-    """
+    """ Handle the 'post_install' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.post_install()
 
 
 def sync_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'sync' command.
-    """
+    """ Handle the 'sync' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.synchronize()
 
 
 def check_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'check' command.
-    """
+    """ Handle the 'check' command.  """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
             group.check()
 
 
 def groups_cmd(args: argparse.Namespace) -> None:
-    """
-    Handle the 'groups' command.
-    """
+    """ Handle the 'groups' command.  """
     if args.group:
         # If a groups has been specified, print the YAML data
         # from the config file
@@ -660,16 +636,18 @@ def main() -> None:
                                            aliases=['i'],
                                            help="Install the given group to its destination")
     install_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
-    install_parser.add_argument("--force", "-f", action='store_true',
-                                help="Force installation (even if destination has not been backed up)")
+    install_parser.add_argument("--no-backup", "-B", action='store_true',
+                                help="Do not backup files before installation (overwrite them instead)")
+    install_parser.add_argument("--no-post-install", "-P", action='store_true',
+                                help="Do not run post-install commands")
     install_parser.set_defaults(func=install_cmd)
     # command 'apply'
     apply_parser = subparsers.add_parser("apply",
                                          aliases=['a'],
                                          help="Copy the 'sync_files' of the given group to their destination")
     apply_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
-    apply_parser.add_argument("--force", "-f", action='store_true',
-                              help="Force apply (even if destination has not been backed up")
+    apply_parser.add_argument("--no-backup", "-B", action='store_true',
+                              help="Do not backup files (overwrite them instead)")
     apply_parser.set_defaults(func=apply_cmd)
     # command 'backup'
     backup_parser = subparsers.add_parser("backup",
