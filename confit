@@ -179,7 +179,7 @@ class ConfGroup:
                 elif dst_path.is_file():
                     if self._diff_files(src_path, dst_path):
                         diff_found = True
-            printq(" > DONE")
+            printq(" > DONE ({} differences found)".format('' if diff_found else 'no'))
         return diff_found
 
     def check(self) -> bool:
@@ -220,7 +220,7 @@ class ConfGroup:
                 subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
 
     def _diff_files(self, src_file: Path, dst_file: Path) -> bool:
-        printq(f" > '{src_file}' vs. '{dst_file}' (files)")
+        printq(f" > '{src_file}' vs. '{dst_file}'")
         if src_file.exists() and not dst_file.exists():
             printq(f" > '{src_file}' exists in this repo but not in the destination")
             return True
@@ -257,7 +257,7 @@ class ConfGroup:
         """
         Recursively compare directories and print diffs for differing files.
         """
-        printq(f" > '{src_dir}' vs. '{dst_dir}' (directories)")
+        printq(f" > '{src_dir}' vs. '{dst_dir}'")
         # compare directories
         for src_file in src_dir.iterdir():
             dst_file = dst_dir / src_file.name
