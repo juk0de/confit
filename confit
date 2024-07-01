@@ -166,7 +166,8 @@ class ConfGroup:
                 dst_path = self.dest / dst
                 if dst_path.exists():
                     self._do_copy(dst_path, src_path)
-                printq(f" -> '{dst_path}' does not exist, skipping synchronization")
+                else:
+                    printq(f" > '{dst_path}' does not exist, skipping synchronization")
             printq(" > DONE")
 
     def check(self) -> bool:
