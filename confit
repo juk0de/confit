@@ -12,6 +12,7 @@ import itertools
 import yaml
 from pathlib import Path
 from datetime import datetime
+from typing import List, Tuple, Dict, Optional
 
 
 class ConfitError(Exception):
@@ -22,10 +23,10 @@ class ConfGroup:
     def __init__(self,
                  name: str,
                  dest: Path,
-                 install_files: list[tuple[str, str]],
-                 sync_files: list[tuple[str, str]] | None = None,
-                 post_install_cmds: list[tuple[str, str]] = list(),
-                 check_binaries: list[tuple[str, str]] = list(),
+                 install_files: List[Tuple[str, str]],
+                 sync_files: Optional[List[Tuple[str, str]]] = None,
+                 post_install_cmds: List[Tuple[str, str]] = list(),
+                 check_binaries: List[Tuple[str, str]] = list(),
                  max_backups: int = 5) -> None:
         """
         - 'name': the name of this configuration group
@@ -295,9 +296,9 @@ class ConfGroup:
 # global variables
 confit_files = ['.conf.it', 'conf.it', 'confit.yaml', '.confit.yaml']
 config: dict
-groups: dict[str, ConfGroup]
-delta: str | None
-rsync: str | None
+groups: Dict[str, ConfGroup]
+delta: Optional[str]
+rsync: Optional[str]
 quiet: bool = False
 
 
@@ -313,7 +314,7 @@ def printq(*args, **kwargs):
         print(*args, **kwargs)
 
 
-def find_delta() -> str | None:
+def find_delta() -> Optional[str]:
     """
     Check if the 'delta' binary is available in the environment and return its full path.
     """
@@ -324,7 +325,7 @@ def find_delta() -> str | None:
         return None
 
 
-def find_rsync() -> str | None:
+def find_rsync() -> Optional[str]:
     """
     Check if the 'rsync' binary is available in the environment and return its full path.
     """
@@ -335,7 +336,7 @@ def find_rsync() -> str | None:
         return None
 
 
-def get_hostname() -> str | None:
+def get_hostname() -> Optional[str]:
     """
     Determine the hostname of the system.
     """
@@ -399,7 +400,7 @@ def validate_groups(groups: dict) -> None:
                     raise ConfitError(f"Invalid mapping in group '{group_name}': '{src}' is a directory, while '{dst}' is not.")
 
 
-def load_config() -> tuple[dict, dict[str, ConfGroup]]:
+def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
     """
     Load settings and configuration groups from the config file.
     Returns the raw dict and the ConfGroups instances.
