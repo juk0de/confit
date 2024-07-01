@@ -417,7 +417,7 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                 current_hostname = get_hostname()
                 for key, value in data['groups'].items():
                     # Check if the 'host' key is present and matches the current hostname
-                    if 'host' in value and value['host'] != current_hostname:
+                    if 'hosts' in value and current_hostname not in value['hosts']:
                         continue
                     try:
                         # 'sync_files' can have 3 values with different effects:

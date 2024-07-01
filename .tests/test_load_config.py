@@ -145,7 +145,8 @@ def test_load_config_with_host_filter(mock_get_hostname):
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
-            host: testhost
+            hosts:
+              - testhost
         """
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
@@ -163,7 +164,8 @@ def test_load_config_with_host_filter_no_match(mock_get_hostname):
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
-            host: testhost
+            hosts:
+              - testhost
         """
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]

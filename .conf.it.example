@@ -3,6 +3,9 @@ groups:
   example:
     desc: "example"
     dest: "/home/user/"
+    hosts:
+      - "host1"
+      - "host2"
     install_files:
       - ["example/src_dir", "example/dest_dir"]
       - ["example/src_file", "example/dest_file"]
@@ -10,4 +13,4 @@ groups:
       - ["example_cmd", "example_dir"]
     sync_files:
       - ["example/src_file", "example/dest_file"]
-    max_backups: 5
+    max_backups: 3
