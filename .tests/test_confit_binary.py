@@ -77,7 +77,7 @@ def test_confit_diff_differences(confit_path):
         src_file.write_text("source content")
         dst_file.write_text("destination content")
 
-        result = subprocess.run([confit_binary, 'diff', 'testgroup'], capture_output=True, text=True, cwd=tempdir)
+        result = subprocess.run([confit_binary, 'diff', '--no-pager', 'testgroup'], capture_output=True, text=True, cwd=tempdir)
         print(result.stdout)
         assert result.returncode == 1
         assert "diff" in result.stdout
@@ -105,7 +105,7 @@ def test_confit_diff_no_differences(confit_path):
         src_file.write_text("content")
         dst_file.write_text("content")
 
-        result = subprocess.run([confit_binary, 'diff', 'testgroup'], capture_output=True, text=True, cwd=tempdir)
+        result = subprocess.run([confit_binary, 'diff', '--no-pager', 'testgroup'], capture_output=True, text=True, cwd=tempdir)
         print(result.stdout)
         assert result.returncode == 0
         assert "diff" in result.stdout

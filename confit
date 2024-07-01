@@ -133,6 +133,25 @@ class ConfGroup:
                 self._do_copy(Path(src), dst_path)
             printq(" > DONE")
 
+    def _do_copy(self, src: Path, dst: Path) -> None:
+        if rsync:
+            printq(f" > '{src}' -> '{dst}' (rsync)")
+            if src.is_dir():
+                # add trailing slashes to directories to ensure correct behaviour
+                # NOTE: pathlib always strips trailing `/`
+                subprocess.run([rsync, '-a', f'{src}/', f'{dst}/'], check=True)
+            else:
+                subprocess.run([rsync, '-a', src, dst], check=True)
+        else:
+            printq(f" > '{src}' -> '{dst}' (cp)")
+            if dst.exists() and dst.is_dir():
+                # if destination exists and is a directory, overwrite it
+                # NOTE: with 'cp', we want the source without trailing `/`, in order to
+                # correctly handle symlinks (but it's recommended to add it to the destination)
+                subprocess.run(["cp", "-a", str(src), f'{dst.parent}/'], check=True)
+            else:
+                subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
+
     def synchronize(self) -> None:
         """
         Copy the 'sync_files' of the current group from their destination to the confit repo.
@@ -150,7 +169,25 @@ class ConfGroup:
                 printq(f" -> '{dst_path}' does not exist, skipping synchronization")
             printq(" > DONE")
 
-    def diff(self) -> bool:
+    def check(self) -> bool:
+        """
+        Check if the binaries in 'check_binaries' are available in $PATH.
+        Return 'True' if all binaries have been found, 'False' otherwise.
+        """
+        printq(f"=> Checking available binaries for '{self.name}'")
+        all_found = True
+        for binary, description in self.check_binaries:
+            binary_path = shutil.which(binary)
+            printq(f" > {binary} ({description}) ... ", end='', flush=True)
+            if binary_path:
+                printq("found")
+            else:
+                printq("NOT found")
+                all_found = False
+        printq(" > DONE")
+        return all_found
+
+    def diff(self, use_pager: bool = True) -> bool:
         """
         Compare the installed files of the current group vs the files in this repo.
         If it's a file, make a unified diff and print it if there's an actual difference.
@@ -177,49 +214,12 @@ class ConfGroup:
                     if self._diff_directories(src_path, dst_path):
                         diff_found = True
                 elif dst_path.is_file():
-                    if self._diff_files(src_path, dst_path):
+                    if self._diff_files(src_path, dst_path, use_pager=use_pager):
                         diff_found = True
             printq(" > DONE ({}differences found)".format('' if diff_found else 'no '))
         return diff_found
 
-    def check(self) -> bool:
-        """
-        Check if the binaries in 'check_binaries' are available in $PATH.
-        Return 'True' if all binaries have been found, 'False' otherwise.
-        """
-        printq(f"=> Checking available binaries for '{self.name}'")
-        all_found = True
-        for binary, description in self.check_binaries:
-            binary_path = shutil.which(binary)
-            printq(f" > {binary} ({description}) ... ", end='', flush=True)
-            if binary_path:
-                printq("found")
-            else:
-                printq("NOT found")
-                all_found = False
-        printq(" > DONE")
-        return all_found
-
-    def _do_copy(self, src: Path, dst: Path) -> None:
-        if rsync:
-            printq(f" > '{src}' -> '{dst}' (rsync)")
-            if src.is_dir():
-                # add trailing slashes to directories to ensure correct behaviour
-                # NOTE: pathlib always strips trailing `/`
-                subprocess.run([rsync, '-a', f'{src}/', f'{dst}/'], check=True)
-            else:
-                subprocess.run([rsync, '-a', src, dst], check=True)
-        else:
-            printq(f" > '{src}' -> '{dst}' (cp)")
-            if dst.exists() and dst.is_dir():
-                # if destination exists and is a directory, overwrite it
-                # NOTE: with 'cp', we want the source without trailing `/`, in order to
-                # correctly handle symlinks (but it's recommended to add it to the destination)
-                subprocess.run(["cp", "-a", str(src), f'{dst.parent}/'], check=True)
-            else:
-                subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
-
-    def _diff_files(self, src_file: Path, dst_file: Path) -> bool:
+    def _diff_files(self, src_file: Path, dst_file: Path, use_pager: bool = True) -> bool:
         printq(f" > '{src_file}' vs. '{dst_file}'")
         if src_file.exists() and not dst_file.exists():
             printq(f" > '{src_file}' exists in this repo but not in the destination")
@@ -236,7 +236,7 @@ class ConfGroup:
                 diff_output = ''.join(diff)
                 if diff_output:
                     diff_found = True
-                    if delta:
+                    if delta and use_pager:
                         process = subprocess.Popen([delta, '--line-numbers'],
                                                    stdin=subprocess.PIPE,
                                                    stdout=subprocess.PIPE,
@@ -473,7 +473,7 @@ def diff_cmd(args: argparse.Namespace) -> int:
     diff_found = False
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            if group.diff():
+            if group.diff(use_pager=not args.no_pager):
                 diff_found = True
     return 1 if diff_found else 0
 
@@ -677,6 +677,8 @@ def main() -> None:
                                         aliases=['d'],
                                         help="Print unified diff between repo and destination files of the given group")
     diff_parser.add_argument("group", action=GroupChoicesAction, help="Group name")
+    diff_parser.add_argument("--no-pager", "-P", action='store_true',
+                             help="Do not use 'delta' as pager for the diff output")
     diff_parser.set_defaults(func=diff_cmd)
     # command 'sync'
     sync_parser = subparsers.add_parser("sync",
