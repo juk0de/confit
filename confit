@@ -180,7 +180,7 @@ class ConfGroup:
             binary_path = shutil.which(binary)
             printq(f" > {binary} ({description}) ... ", end='', flush=True)
             if binary_path:
-                printq("found")
+                printq(f"found (-> {binary_path})")
             else:
                 printq("NOT found")
                 all_found = False
