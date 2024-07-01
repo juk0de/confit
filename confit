@@ -187,7 +187,7 @@ class ConfGroup:
         Check if the binaries in 'check_binaries' are available in $PATH.
         Return 'True' if all binaries have been found, 'False' otherwise.
         """
-        printq(f"=> Checking '{self.name}'")
+        printq(f"=> Checking available binaries for '{self.name}'")
         all_found = True
         for binary, description in self.check_binaries:
             binary_path = shutil.which(binary)
