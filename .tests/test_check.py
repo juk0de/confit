@@ -12,7 +12,7 @@ def test_check_all_binaries_found():
     )
 
     with patch("shutil.which", side_effect=["/usr/bin/binary1", "/usr/bin/binary2"]):
-        result = group.check(verbose=True)
+        result = group.check()
         assert result is True
 
 
@@ -25,7 +25,7 @@ def test_check_some_binaries_not_found():
     )
 
     with patch("shutil.which", side_effect=["/usr/bin/binary1", None]):
-        result = group.check(verbose=True)
+        result = group.check()
         assert result is False
 
 
@@ -37,5 +37,5 @@ def test_check_no_binaries_to_check():
         check_binaries=[]
     )
 
-    result = group.check(verbose=True)
+    result = group.check()
     assert result is True

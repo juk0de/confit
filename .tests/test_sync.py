@@ -30,7 +30,7 @@ def test_sync_file_cp():
         )
 
         # Perform the sync
-        group.synchronize(verbose=True)
+        group.synchronize()
 
         # Check if the file was copied correctly
         src_file = src_dir / "testfile.txt"
@@ -67,7 +67,7 @@ def test_sync_file_rsync():
         )
 
         # Perform the sync
-        group.synchronize(verbose=True)
+        group.synchronize()
 
         # Check if the file was copied correctly
         src_file = src_dir / "testfile.txt"
@@ -108,7 +108,7 @@ def test_sync_directory_cp():
         )
 
         # Perform the sync
-        group.synchronize(verbose=True)
+        group.synchronize()
 
         # Check if the directory and files were copied correctly
         src_sub_dir = src_dir / "subdir"
@@ -160,7 +160,7 @@ def test_sync_directory_rsync():
         )
 
         # Perform the sync
-        group.synchronize(verbose=True)
+        group.synchronize()
 
         # Check if the directory and files were copied correctly
         src_sub_dir = src_dir / "subdir"
@@ -204,7 +204,7 @@ def test_sync_file_missing_in_dest():
         )
 
         # Perform the sync
-        group.synchronize(verbose=True)
+        group.synchronize()
 
         # Check if the file was not deleted in the source directory
         assert src_file.exists()

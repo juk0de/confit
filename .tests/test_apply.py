@@ -30,7 +30,7 @@ def test_apply_file_cp():
         )
 
         # Perform the apply
-        group.apply(verbose=True)
+        group.apply()
 
         # Check if the file was copied correctly
         dst_file = dst_dir / "testfile.txt"
@@ -67,7 +67,7 @@ def test_apply_file_rsync():
         )
 
         # Perform the apply
-        group.apply(verbose=True)
+        group.apply()
 
         # Check if the file was copied correctly
         dst_file = dst_dir / "testfile.txt"
@@ -108,7 +108,7 @@ def test_apply_directory_cp():
         )
 
         # Perform the apply
-        group.apply(verbose=True)
+        group.apply()
 
         # Check if the directory and files were copied correctly
         dst_sub_dir = dst_dir / "subdir"
@@ -160,7 +160,7 @@ def test_apply_directory_rsync():
         )
 
         # Perform the apply
-        group.apply(verbose=True)
+        group.apply()
 
         # Check if the directory and files were copied correctly
         dst_sub_dir = dst_dir / "subdir"

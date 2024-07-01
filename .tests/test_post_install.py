@@ -28,7 +28,7 @@ def test_post_install():
         )
 
         # Perform the post_install
-        group.post_install(verbose=True)
+        group.post_install()
 
         # Check if the script was executed correctly
         output_file = dest_dir / "output.txt"
@@ -56,7 +56,7 @@ def test_post_install_with_nonexistent_script():
 
         # Perform the post_install and expect an exception
         with pytest.raises(subprocess.CalledProcessError):
-            group.post_install(verbose=True)
+            group.post_install()
 
 
 if __name__ == "__main__":

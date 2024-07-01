@@ -50,13 +50,13 @@ class ConfGroup:
         self.check_binaries = check_binaries
         self.max_backups = max_backups
 
-    def backup(self, files: str = 'install', verbose: bool = False) -> None:
+    def backup(self, files: str = 'install') -> None:
         """
         Back up existing files by renaming them. Renaming is done by appending a suffix
         consisting of '.ba' + timestamp (corresponding to the last modification time).
         Retains a maximum of 'max_backup' backup files (the oldest is deleted).
         """
-        print(f"=> Backing up '{self.name}'")
+        printq(f"=> Backing up '{self.name}'")
         if files == 'install':
             backup_files = self.install_files
         elif files == 'sync':
@@ -73,8 +73,7 @@ class ConfGroup:
                     while backup_path.exists():
                         backup_path = Path(f'{backup_path}.{counter}')
                         counter += 1
-                if verbose:
-                    print(f" > renaming '{dst_path}' to '{backup_path}'")
+                printq(f" > renaming '{dst_path}' to '{backup_path}'")
                 dst_path.rename(backup_path)
 
                 # respect the max. nr. of backups
@@ -82,79 +81,76 @@ class ConfGroup:
                                  key=lambda p: p.stat().st_mtime)
                 if len(backups) > self.max_backups:
                     for old_backup in backups[:-self.max_backups]:
-                        if verbose:
-                            print(f" > removing old backup '{old_backup}'")
+                        printq(f" > removing old backup '{old_backup}'")
                         old_backup.unlink()
-        print(" > DONE")
+        printq(" > DONE")
 
-    def install(self, force: bool = False, verbose: bool = False) -> None:
+    def install(self, force: bool = False) -> None:
         """
         Copy all 'install_files' of the current group to their destination. Expect the target
         to NOT exist (because it's renamed during backup). If it exists, raise an exception.
         If 'force' is true, overwrite the destination.
         """
 
-        print(f"=> Installing '{self.name}'")
+        printq(f"=> Installing '{self.name}'")
         for src, dst in self.install_files:
             dst_path = self.dest / dst
             if dst_path.exists() and not force:
                 raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting installation.")
-            self._do_copy(Path(src), dst_path, verbose)
-        print(" > DONE")
+            self._do_copy(Path(src), dst_path)
+        printq(" > DONE")
 
-    def post_install(self, verbose: bool = False) -> None:
+    def post_install(self) -> None:
         """
         If this groups has a 'post_install_cmds' list, each command is executed in the
         according working directory.
         """
-        print(f"=> Running post-install commands for '{self.name}'")
+        printq(f"=> Running post-install commands for '{self.name}'")
         if len(self.post_install_cmds) == 0:
-            print(" > Nothing to do.")
+            printq(" > Nothing to do.")
         else:
             for cmd, wdir in self.post_install_cmds:
                 full_wdir = self.dest / wdir
-                if verbose:
-                    print(f" > executing '{cmd}' in '{full_wdir}'")
+                printq(f" > executing '{cmd}' in '{full_wdir}'")
                 subprocess.run(cmd, shell=True, cwd=full_wdir, check=True)
-            print(" > DONE")
+            printq(" > DONE")
 
-    def apply(self, force: bool = False, verbose: bool = False) -> None:
+    def apply(self, force: bool = False) -> None:
         """
         Copy all 'sync_files' of the current group to their destination. Expect the target
         to NOT exist (because it's renamed during backup). If it exists, raise an exception.
         If 'force' is true, overwrite the destination.
         """
 
-        print(f"=> Applying '{self.name}'")
+        printq(f"=> Applying '{self.name}'")
         if len(self.sync_files) == 0:
-            print(" > Nothing to do.")
+            printq(" > Nothing to do.")
         else:
             for src, dst in self.sync_files:
                 dst_path = self.dest / dst
                 if dst_path.exists() and not force:
                     raise ConfitError(f"Destination '{dst_path}' exists (has it been backed up?)! Aborting apply.")
-                self._do_copy(Path(src), dst_path, verbose)
-            print(" > DONE")
+                self._do_copy(Path(src), dst_path)
+            printq(" > DONE")
 
-    def synchronize(self, verbose: bool = False) -> None:
+    def synchronize(self) -> None:
         """
         Copy the 'sync_files' of the current group from their destination to the confit repo.
         Note that files missing in the destination are NOT deleted in the repository!
         """
-        print(f"=> Synchronizing '{self.name}'")
+        printq(f"=> Synchronizing '{self.name}'")
         if len(self.sync_files) == 0:
-            print(" > Nothing to do.")
+            printq(" > Nothing to do.")
         else:
             for src, dst in self.sync_files:
                 src_path = Path(src)
                 dst_path = self.dest / dst
                 if dst_path.exists():
-                    self._do_copy(dst_path, src_path, verbose)
-                elif verbose:
-                    print(f" -> '{dst_path}' does not exist, skipping synchronization")
-            print(" > DONE")
+                    self._do_copy(dst_path, src_path)
+                printq(f" -> '{dst_path}' does not exist, skipping synchronization")
+            printq(" > DONE")
 
-    def diff(self, verbose: bool = False) -> bool:
+    def diff(self) -> bool:
         """
         Compare the installed files of the current group vs the files in this repo.
         If it's a file, make a unified diff and print it if there's an actual difference.
@@ -162,52 +158,51 @@ class ConfGroup:
         This is done recursively. In case of differing files, print a unified diff.
         Return 'True' if differences are found, 'False' otherwise.
         """
-        print(f"=> Diff'ing '{self.name}'")
+        printq(f"=> Diff'ing '{self.name}'")
         diff_found = False
         if len(self.sync_files) == 0:
-            print(" > Nothing to do.")
+            printq(" > Nothing to do.")
         else:
             for src, dst in self.sync_files:
                 dst_path = self.dest / dst
                 src_path = Path(src)
                 # diff
                 if not dst_path.exists():
-                    print(f" > '{dst_path}' does not exist")
+                    printq(f" > '{dst_path}' does not exist")
                     diff_found = True
                 elif not src_path.exists():
-                    print(f" > '{src_path}' does not exist in this repo")
+                    printq(f" > '{src_path}' does not exist in this repo")
                     diff_found = True
                 elif dst_path.is_dir():
-                    if self._diff_directories(src_path, dst_path, verbose):
+                    if self._diff_directories(src_path, dst_path):
                         diff_found = True
                 elif dst_path.is_file():
-                    if self._diff_files(src_path, dst_path, verbose):
+                    if self._diff_files(src_path, dst_path):
                         diff_found = True
-            print(" > DONE")
+            printq(" > DONE")
         return diff_found
 
-    def check(self, verbose: bool = False) -> bool:
+    def check(self) -> bool:
         """
         Check if the binaries in 'check_binaries' are available in $PATH.
         Return 'True' if all binaries have been found, 'False' otherwise.
         """
-        print(f"=> Checking '{self.name}'")
+        printq(f"=> Checking '{self.name}'")
         all_found = True
         for binary, description in self.check_binaries:
             binary_path = shutil.which(binary)
-            print(f" > {binary} ({description}) ... ", end='', flush=True)
+            printq(f" > {binary} ({description}) ... ", end='', flush=True)
             if binary_path:
-                print("found")
+                printq("found")
             else:
-                print("NOT found")
+                printq("NOT found")
                 all_found = False
-        print(" > DONE")
+        printq(" > DONE")
         return all_found
 
-    def _do_copy(self, src: Path, dst: Path, verbose: bool = False) -> None:
+    def _do_copy(self, src: Path, dst: Path) -> None:
         if rsync:
-            if verbose:
-                print(f" > '{src}' -> '{dst}' (rsync)")
+            printq(f" > '{src}' -> '{dst}' (rsync)")
             if src.is_dir():
                 # add trailing slashes to directories to ensure correct behaviour
                 # NOTE: pathlib always strips trailing `/`
@@ -215,8 +210,7 @@ class ConfGroup:
             else:
                 subprocess.run([rsync, '-a', src, dst], check=True)
         else:
-            if verbose:
-                print(f" > '{src}' -> '{dst}' (cp)")
+            printq(f" > '{src}' -> '{dst}' (cp)")
             if dst.exists() and dst.is_dir():
                 # if destination exists and is a directory, overwrite it
                 # NOTE: with 'cp', we want the source without trailing `/`, in order to
@@ -225,14 +219,13 @@ class ConfGroup:
             else:
                 subprocess.run(['cp', '-a', str(src), str(dst)], check=True)
 
-    def _diff_files(self, src_file: Path, dst_file: Path, verbose: bool = False) -> bool:
-        if verbose:
-            print(f" > '{src_file}' vs. '{dst_file}' (files)")
+    def _diff_files(self, src_file: Path, dst_file: Path) -> bool:
+        printq(f" > '{src_file}' vs. '{dst_file}' (files)")
         if src_file.exists() and not dst_file.exists():
-            print(f" > '{src_file}' exists in this repo but not in the destination")
+            printq(f" > '{src_file}' exists in this repo but not in the destination")
             return True
         if dst_file.exists() and not src_file.exists():
-            print(f" > '{dst_file}' exists in the destination but not in this repo")
+            printq(f" > '{dst_file}' exists in the destination but not in this repo")
             return True
         diff_found = False
         with open(src_file, 'r') as src_f, open(dst_file, 'r') as dst_f:
@@ -250,22 +243,21 @@ class ConfGroup:
                                                    stderr=subprocess.PIPE)
                         stdout, stderr = process.communicate(input=diff_output.encode())
                         if process.returncode == 0:
-                            print(stdout.decode())
+                            printq(stdout.decode())
                         else:
-                            print(f"Delta failed with error: {stderr.decode()}")
+                            printe(f"'delta' failed with error: {stderr.decode()}")
                     else:
-                        print(diff_output)
+                        printq(diff_output)
             except Exception as e:
-                print(f"Failed to diff '{src_file}' and '{dst_file}': {e}")
+                printe(f"Failed to diff '{src_file}' and '{dst_file}': {e}")
         return diff_found
 
     def _diff_directories(self, src_dir: Path, dst_dir: Path,
-                          diff_found: bool = False, verbose: bool = False) -> bool:
+                          diff_found: bool = False) -> bool:
         """
         Recursively compare directories and print diffs for differing files.
         """
-        if verbose:
-            print(f" > '{src_dir}' vs. '{dst_dir}' (directories)")
+        printq(f" > '{src_dir}' vs. '{dst_dir}' (directories)")
         # compare directories
         for src_file in src_dir.iterdir():
             dst_file = dst_dir / src_file.name
@@ -273,28 +265,28 @@ class ConfGroup:
             if src_file.is_dir():
                 if dst_file.exists() and dst_file.is_dir():
                     # make recursive call with the current 'diff_found' to keep the state
-                    diff_found = self._diff_directories(src_file, dst_file, diff_found, verbose)
+                    diff_found = self._diff_directories(src_file, dst_file, diff_found)
                 elif dst_file.is_file():
-                    print(f"'{src_file}' is a directory while '{dst_file}' is a file.")
+                    printq(f" > '{src_file}' is a directory while '{dst_file}' is a file.")
                     diff_found = True
                 else:
                     diff_found = True
-                    print(f"Directory '{src_file}' exists in this repo but not in the destination.")
+                    printq(f" > Directory '{src_file}' exists in this repo but not in the destination.")
             elif src_file.is_file():
                 if dst_file.exists() and dst_file.is_file():
                     # never set 'diff_found' to False, it may already be True
-                    if self._diff_files(src_file, dst_file, verbose):
+                    if self._diff_files(src_file, dst_file):
                         diff_found = True
                 elif dst_file.is_dir():
-                    print(f"'{src_file}' is a file while '{dst_file}' is a directory.")
+                    printq(f" > '{src_file}' is a file while '{dst_file}' is a directory.")
                     diff_found = True
                 else:
-                    print(f"File '{src_file}' exists in this repo but not in the destination.")
+                    printq(f" > File '{src_file}' exists in this repo but not in the destination.")
                     diff_found = True
         for dst_file in dst_dir.iterdir():
             src_file = src_dir / dst_file.name
             if not src_file.exists():
-                print(f"File '{dst_file}' exists in the destination but not in this repo.")
+                printq(f" > File '{dst_file}' exists in the destination but not in this repo.")
                 diff_found = True
         return diff_found
 
@@ -305,13 +297,19 @@ config: dict
 groups: dict[str, ConfGroup]
 delta: str | None
 rsync: str | None
+quiet: bool = False
 
 
-def print_err(*args, **kwargs):
-    """
-    Print the given arguments to stderr.
-    """
+def printe(*args, **kwargs):
+    " Print to stderr. "
     print(*args, file=sys.stderr, **kwargs)
+
+
+def printq(*args, **kwargs):
+    " Print if not quiet. "
+    global quiet
+    if not quiet:
+        print(*args, **kwargs)
 
 
 def find_delta() -> str | None:
@@ -468,10 +466,10 @@ def backup_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.backup(verbose=args.verbose)
+            group.backup()
     else:
         group = groups[args.group]
-        group.backup(verbose=args.verbose)
+        group.backup()
 
 
 def diff_cmd(args: argparse.Namespace) -> None:
@@ -480,10 +478,10 @@ def diff_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.diff(verbose=args.verbose)
+            group.diff()
     else:
         group = groups[args.group]
-        group.diff(verbose=args.verbose)
+        group.diff()
 
 
 def install_cmd(args: argparse.Namespace) -> None:
@@ -492,14 +490,14 @@ def install_cmd(args: argparse.Namespace) -> None:
     """
     if args.group == "all":
         for group in groups.values():
-            group.backup(verbose=args.verbose)
-            group.install(force=args.force, verbose=args.verbose)
-            group.post_install(verbose=args.verbose)
+            group.backup()
+            group.install(force=args.force)
+            group.post_install()
     else:
         group = groups[args.group]
-        group.backup(verbose=args.verbose)
-        group.install(force=args.force, verbose=args.verbose)
-        group.post_install(verbose=args.verbose)
+        group.backup()
+        group.install(force=args.force)
+        group.post_install()
 
 
 def apply_cmd(args: argparse.Namespace) -> None:
@@ -508,8 +506,8 @@ def apply_cmd(args: argparse.Namespace) -> None:
     """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.backup(files='sync', verbose=args.verbose)
-            group.apply(force=args.force, verbose=args.verbose)
+            group.backup(files='sync')
+            group.apply(force=args.force)
 
 
 def post_install_cmd(args: argparse.Namespace) -> None:
@@ -518,7 +516,7 @@ def post_install_cmd(args: argparse.Namespace) -> None:
     """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.post_install(verbose=args.verbose)
+            group.post_install()
 
 
 def sync_cmd(args: argparse.Namespace) -> None:
@@ -527,7 +525,7 @@ def sync_cmd(args: argparse.Namespace) -> None:
     """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.synchronize(verbose=args.verbose)
+            group.synchronize()
 
 
 def check_cmd(args: argparse.Namespace) -> None:
@@ -536,7 +534,7 @@ def check_cmd(args: argparse.Namespace) -> None:
     """
     for group in groups.values():
         if group.name == args.group or args.group == 'all':
-            group.check(verbose=args.verbose)
+            group.check()
 
 
 def groups_cmd(args: argparse.Namespace) -> None:
@@ -550,14 +548,14 @@ def groups_cmd(args: argparse.Namespace) -> None:
         if group:
             group_data = config['groups'].get(args.group)
             if group_data:
-                print(yaml.dump({args.group: group_data}, default_flow_style=False))
+                printq(yaml.dump({args.group: group_data}, default_flow_style=False))
             else:
-                print(f"Group '{args.group}' not found in the confit file.")
+                printq(f"Group '{args.group}' not found in the confit file.")
         else:
-            print(f"Group '{args.group}' not found.")
+            printq(f"Group '{args.group}' not found.")
     else:
         for group_name in groups.keys():
-            print(group_name)
+            printq(group_name)
 
 
 def update_self_cmd(args: argparse.Namespace) -> None:
@@ -568,7 +566,7 @@ def update_self_cmd(args: argparse.Namespace) -> None:
         import pygit2  # type: ignore[import]
         import requests
     except ImportError as e:
-        print(f"The 'update' command requires 'pygit2' and 'requests': {e}")
+        printq(f"The 'update' command requires 'pygit2' and 'requests': {e}")
         sys.exit(1)
 
     update_files = [
@@ -580,13 +578,13 @@ def update_self_cmd(args: argparse.Namespace) -> None:
         repo = pygit2.Repository('.')
         status = repo.status()
         if status:
-            print_err("The repository is dirty. Please commit or stash your changes before updating.")
+            printe("The repository is dirty. Please commit or stash your changes before updating.")
             sys.exit(1)
     except pygit2.GitError as e:
-        print_err(f"Failed to access the repository: {e}")
+        printe(f"Failed to access the repository: {e}")
         sys.exit(1)
 
-    print("=> Updating")
+    printq("=> Updating")
     # download the update files
     for url, local_path in update_files:
         try:
@@ -594,9 +592,9 @@ def update_self_cmd(args: argparse.Namespace) -> None:
             response.raise_for_status()
             with open(local_path, 'wb') as file:
                 file.write(response.content)
-            print(f"> Updated '{local_path}' from '{url}'.")
+            printq(f"> Updated '{local_path}' from '{url}'.")
         except requests.RequestException as e:
-            print_err(f"> Failed to download latest version of '{local_path}': {e}")
+            printe(f"> Failed to download latest version of '{local_path}': {e}")
             sys.exit(1)
 
     # commit the changes if there are any
@@ -606,7 +604,7 @@ def update_self_cmd(args: argparse.Namespace) -> None:
         index.write()
         if repo.status():
             if args.no_commit:
-                print("> Files have been updated. Make sure to commit the  changes.")
+                printq("> Files have been updated. Make sure to commit the  changes.")
             else:
                 author = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
                 committer = pygit2.Signature('confit update', 'https://github.com/juk0de/confit/')
@@ -619,13 +617,13 @@ def update_self_cmd(args: argparse.Namespace) -> None:
                     tree,  # the tree object this commit points to
                     [repo.head.target]  # the parents of the new commit
                 )
-                print("> Committed the changes with message 'update from upstream'")
+                printq("> Committed the changes with message 'update from upstream'")
         else:
-            print("> No changes detected, nothing to commit.")
+            printq("> No changes detected, nothing to commit.")
     except pygit2.GitError as e:
-        print_err(f"> Failed to commit the changes: {e}")
+        printe(f"> Failed to commit the changes: {e}")
         sys.exit(1)
-    print("> UPDATE SUCCESSFUL!")
+    printq("> UPDATE SUCCESSFUL!")
 
 
 class GroupChoicesAction(argparse.Action):
@@ -648,13 +646,13 @@ def main() -> None:
     script_dir = Path(__file__).resolve().parent
     current_dir = Path.cwd().resolve()
     if script_dir != current_dir:
-        print_err(f"Error: 'confit' must be run from: {script_dir}")
+        printe(f"Error: 'confit' must be run from: {script_dir}")
         sys.exit(1)
     # main parser
     parser = argparse.ArgumentParser(description="confit: manage config files and tools, organized by groups")
-    parser.add_argument('--verbose', '-v',
+    parser.add_argument('--quiet', '-q',
                         action='store_true',
-                        help="Enable verbose output")
+                        help="Disable all output")
     # subcommand parsers
     subparsers = parser.add_subparsers(dest="command", required=True, help="Subcommands")
     # command 'install'
@@ -717,16 +715,18 @@ def main() -> None:
                                     help="Skip automated commit after update")
     update_self_parser.set_defaults(func=update_self_cmd)
 
-    command = parser.parse_args()
+    args = parser.parse_args()
+    global quiet
+    quiet = args.quiet
     # do not read the configuration file for the 'update-self' function
-    if command.func != update_self_cmd:
+    if args.func != update_self_cmd:
         try:
             init_globals()
         except ConfitError as e:
-            print_err(e)
+            printe(e)
             sys.exit(1)
 
-    command.func(command)
+    args.func(args)
 
 
 if __name__ == "__main__":

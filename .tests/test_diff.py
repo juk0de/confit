@@ -31,7 +31,7 @@ def test_diff_no_difference():
         )
 
         # Perform the diff
-        assert not group.diff(verbose=True)
+        assert not group.diff()
 
 
 def test_diff_with_difference():
@@ -60,7 +60,7 @@ def test_diff_with_difference():
         )
 
         # Perform the diff
-        assert group.diff(verbose=True)
+        assert group.diff()
 
 
 def test_diff_file_missing_in_dest():
@@ -84,7 +84,7 @@ def test_diff_file_missing_in_dest():
         )
 
         # Perform the diff
-        assert group.diff(verbose=True)
+        assert group.diff()
 
 
 def test_diff_directory():
@@ -125,7 +125,7 @@ def test_diff_directory():
         )
 
         # Perform the diff
-        assert group.diff(verbose=True)
+        assert group.diff()
 
 
 if __name__ == "__main__":
