@@ -180,6 +180,41 @@ def test_sync_directory_rsync():
             assert content == "This is file 2."
 
 
+def test_sync_create_source_path():
+    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir_path = Path(tempdir)
+
+        # Create destination directory
+        dst_dir = tempdir_path / "dst"
+        dst_dir.mkdir(parents=True)
+
+        # Create a sample file in the destination directory
+        dst_file = dst_dir / "subdir1/subdir2/testfile.txt"
+        dst_file.parent.mkdir(parents=True)
+        with open(dst_file, "w") as f:
+            f.write("This is a test file.")
+
+        # disable rsync for this test
+        confit.rsync = None
+
+        # Define the ConfGroup
+        group = confit.ConfGroup(
+            name="testgroup",
+            dest=dst_dir,
+            install_files=[(str(tempdir_path / "src/subdir1/subdir2/testfile.txt"), "subdir1/subdir2/testfile.txt")]
+        )
+
+        # Perform the sync
+        group.synchronize()
+
+        # Check if the source path and file were created correctly
+        src_file = tempdir_path / "src/subdir1/subdir2/testfile.txt"
+        assert src_file.exists()
+        with open(src_file, "r") as f:
+            content = f.read()
+            assert content == "This is a test file."
+
+
 def test_sync_file_missing_in_dest():
     with tempfile.TemporaryDirectory() as tempdir:
         tempdir_path = Path(tempdir)
