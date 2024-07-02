@@ -413,7 +413,7 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                     data = yaml.safe_load(file)
                 except Exception as e:
                     raise ConfitError(f"Failed to read '{confit_file}': {e}")
-                groups = {}
+                groups: Dict[str, ConfGroup] = {}
                 current_hostname = get_hostname()
                 for key, value in data['groups'].items():
                     # Check if the 'host' key is present and matches the current hostname
@@ -430,9 +430,13 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                                 sync_files = [(src, dst) for src, dst in value['sync_files']]
                             else:
                                 sync_files = []
+                        name = value['name']
+                        # check if group with same name already exists
+                        if name in groups.keys():
+                            raise ConfitError(f"Found two groups with wih identical name '{name}'")
                         # create the ConfGroup
-                        groups[key] = ConfGroup(
-                            name=key,
+                        groups[name] = ConfGroup(
+                            name=name,
                             # destination can be a command value
                             dest=Path(resolve_cmd_value(value['dest'])),
                             install_files=[(src, dst) for src, dst in value['install_files']],

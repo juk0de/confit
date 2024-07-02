@@ -17,6 +17,7 @@ def test_load_config_valid():
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -30,10 +31,10 @@ def test_load_config_valid():
         config, groups = confit.load_config()
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" in groups
-        assert groups["testgroup"].dest == Path("/tmp/dest")
-        assert groups["testgroup"].check_binaries == [("binary1", "description1")]
-        assert groups["testgroup"].post_install_cmds == [("command1", "/tmp")]
+        assert "test" in groups
+        assert groups["test"].dest == Path("/tmp/dest")
+        assert groups["test"].check_binaries == [("binary1", "description1")]
+        assert groups["test"].post_install_cmds == [("command1", "/tmp")]
 
 
 def test_load_config_sync_files_omitted():
@@ -41,6 +42,7 @@ def test_load_config_sync_files_omitted():
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -48,8 +50,8 @@ def test_load_config_sync_files_omitted():
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" in groups
-        assert groups["testgroup"].sync_files == groups["testgroup"].install_files
+        assert "test" in groups
+        assert groups["test"].sync_files == groups["test"].install_files
 
 
 def test_load_config_sync_files_empty():
@@ -57,6 +59,7 @@ def test_load_config_sync_files_empty():
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -65,8 +68,8 @@ def test_load_config_sync_files_empty():
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" in groups
-        assert groups["testgroup"].sync_files == []
+        assert "test" in groups
+        assert groups["test"].sync_files == []
 
 
 def test_load_config_sync_files_specified():
@@ -74,6 +77,7 @@ def test_load_config_sync_files_specified():
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -83,8 +87,8 @@ def test_load_config_sync_files_specified():
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" in groups
-        assert groups["testgroup"].sync_files == [("sync_src.txt", "sync_dst.txt")]
+        assert "test" in groups
+        assert groups["test"].sync_files == [("sync_src.txt", "sync_dst.txt")]
 
 
 def test_load_config_invalid_syntax():
@@ -92,6 +96,7 @@ def test_load_config_invalid_syntax():
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt
@@ -120,13 +125,14 @@ def test_load_config_invalid_mapping():
         config_content = f"""
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [{src_file}, {dst_dir}]
         """
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
-        with pytest.raises(ConfitError, match="Invalid mapping in group 'testgroup'"):
+        with pytest.raises(ConfitError, match="Invalid mapping in group 'test'"):
             confit.load_config()
 
 
@@ -142,6 +148,7 @@ def test_load_config_with_host_filter(mock_get_hostname):
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -151,8 +158,8 @@ def test_load_config_with_host_filter(mock_get_hostname):
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" in groups
-        assert groups["testgroup"].dest == Path("/tmp/dest")
+        assert "test" in groups
+        assert groups["test"].dest == Path("/tmp/dest")
 
 
 @patch('import_confit.confit.get_hostname', return_value='wronghost')
@@ -161,6 +168,7 @@ def test_load_config_with_host_filter_no_match(mock_get_hostname):
         config_content = """
         groups:
           testgroup:
+            name: test
             dest: /tmp/dest
             install_files:
               - [src.txt, dst.txt]
@@ -170,4 +178,4 @@ def test_load_config_with_host_filter_no_match(mock_get_hostname):
         create_config_file(config_content, tempdir)
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
-        assert "testgroup" not in groups
+        assert "test" not in groups
