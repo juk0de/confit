@@ -179,3 +179,51 @@ def test_load_config_with_host_filter_no_match(mock_get_hostname):
         confit.confit_files = [str(Path(tempdir) / ".conf.it")]
         config, groups = confit.load_config()
         assert "test" not in groups
+
+
+def test_load_config_duplicate_group_names():
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_content = """
+        groups:
+          group1:
+            name: duplicate
+            dest: /tmp/dest1
+            install_files:
+              - [src1.txt, dst1.txt]
+          group2:
+            name: duplicate
+            dest: /tmp/dest2
+            install_files:
+              - [src2.txt, dst2.txt]
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        with pytest.raises(ConfitError, match="Found two groups with wih identical name 'duplicate'"):
+            confit.load_config()
+
+
+@patch('import_confit.confit.get_hostname', return_value='testhost')
+def test_load_config_duplicate_group_names_with_different_hosts(mock_get_hostname):
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_content = """
+        groups:
+          group1:
+            name: duplicate
+            dest: /tmp/dest1
+            install_files:
+              - [src1.txt, dst1.txt]
+            hosts:
+              - testhost
+          group2:
+            name: duplicate
+            dest: /tmp/dest2
+            install_files:
+              - [src2.txt, dst2.txt]
+            hosts:
+              - otherhost
+        """
+        create_config_file(config_content, tempdir)
+        confit.confit_files = [str(Path(tempdir) / ".conf.it")]
+        config, groups = confit.load_config()
+        assert "duplicate" in groups
+        assert groups["duplicate"].dest == Path("/tmp/dest1")
