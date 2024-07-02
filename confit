@@ -63,7 +63,7 @@ class ConfGroup:
         elif files == 'sync':
             backup_files = self.sync_files
         else:
-            raise ConfitError(f"Got invalid files '{files}' to back up")
+            raise ConfitError(f"Got invalid files '{files}' to back up.")
         for src, dst in backup_files:
             dst_path = self.dest / dst
             if dst_path.exists():
@@ -412,7 +412,7 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                 try:
                     data = yaml.safe_load(file)
                 except Exception as e:
-                    raise ConfitError(f"Failed to read '{confit_file}': {e}")
+                    raise ConfitError(f"Failed to read '{confit_file}': {e}.")
                 groups: Dict[str, ConfGroup] = {}
                 current_hostname = get_hostname()
                 for key, value in data['groups'].items():
@@ -433,7 +433,7 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                         name = value['name']
                         # check if group with same name already exists
                         if name in groups.keys():
-                            raise ConfitError(f"Found two groups with wih identical name '{name}'")
+                            raise ConfitError(f"Found two groups with wih identical name '{name}'.")
                         # create the ConfGroup
                         groups[name] = ConfGroup(
                             name=name,
@@ -446,9 +446,9 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                             max_backups=value.get('max_backups', 5)
                         )
                     except KeyError as e:
-                        raise ConfitError(f"The following key is missing in ConfGroup '{key}': {e}")
+                        raise ConfitError(f"The following key is missing in ConfGroup '{key}': {e}.")
                     except ValueError as e:
-                        raise ConfitError(f"Wrong format detected in ConfGroup '{key}': {e}")
+                        raise ConfitError(f"Wrong format detected in ConfGroup '{key}': {e}.")
                 validate_groups(groups)
                 return (data, groups)
     raise ConfitError("Could not find a valid 'conf.it' file.")
@@ -720,7 +720,7 @@ def main() -> None:
         try:
             init_globals()
         except ConfitError as e:
-            printe(e)
+            printe(f"Error: {e}")
             sys.exit(1)
 
     sys.exit(args.func(args))
