@@ -412,12 +412,16 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
         if confit_file.exists():
             with open(confit_file, 'r') as file:
                 try:
-                    data = yaml.safe_load(file)
+                    raw_config = yaml.safe_load(file)
                 except Exception as e:
                     raise ConfitError(f"Failed to read '{confit_file}': {e}.")
                 groups: Dict[str, ConfGroup] = {}
                 current_hostname = get_hostname()
-                for key, value in data['groups'].items():
+                # build a filtered config dict that contains only the groups for the current
+                # host, with their name as the key (required for the 'groups' command)
+                filtered_config = {key: value for key, value in raw_config.items() if key != 'groups'}
+                filtered_config['groups'] = {}
+                for key, value in raw_config['groups'].items():
                     # Check if the 'host' key is present and matches the current hostname
                     if 'hosts' in value and current_hostname not in value['hosts']:
                         continue
@@ -447,12 +451,14 @@ def load_config() -> Tuple[dict, Dict[str, ConfGroup]]:
                             check_binaries=[(_bin, desc) for _bin, desc in value.get('check_binaries', [])],
                             max_backups=value.get('max_backups', 5)
                         )
+                        # add group to the filtered config
+                        filtered_config['groups'][name] = value
                     except KeyError as e:
                         raise ConfitError(f"The following key is missing in ConfGroup '{key}': {e}.")
                     except ValueError as e:
                         raise ConfitError(f"Wrong format detected in ConfGroup '{key}': {e}.")
                 validate_groups(groups)
-                return (data, groups)
+                return (filtered_config, groups)
     raise ConfitError("Could not find a valid 'conf.it' file.")
 
 
@@ -544,8 +550,10 @@ def groups_cmd(args: argparse.Namespace) -> int:
                 printq(yaml.dump({args.group: group_data}, default_flow_style=False))
             else:
                 printq(f"Group '{args.group}' not found in the confit file.")
+                return 1
         else:
             printq(f"Group '{args.group}' not found.")
+            return 1
     else:
         for group_name in groups.keys():
             printq(group_name)
