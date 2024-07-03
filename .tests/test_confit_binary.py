@@ -50,13 +50,54 @@ def test_confit_groups(confit_path):
             f.write(config_content)
         confit_binary = Path(tempdir) / "confit"
         shutil.copy(confit_path, confit_binary)
+        # print the group list
         result = subprocess.run([confit_binary, 'groups'], capture_output=True, text=True, cwd=tempdir)
         print(result.stdout)
         assert result.returncode == 0
         assert "foo" in result.stdout
+
+
+def test_confit_groups_with_group(confit_path):
+    config_content = """
+    groups:
+      testgroup:
+        name: foo
+        dest: /tmp/dest
+        install_files:
+          - [src.txt, dst.txt]
+    """
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_file = Path(tempdir) / ".conf.it"
+        with open(config_file, "w") as f:
+            f.write(config_content)
+        confit_binary = Path(tempdir) / "confit"
+        shutil.copy(confit_path, confit_binary)
+        # print the complete group data
         result = subprocess.run([confit_binary, 'groups', 'foo'], capture_output=True, text=True, cwd=tempdir)
         print(result.stdout)
         assert result.returncode == 0
+        assert "/tmp/dest" in result.stdout
+
+
+def test_confit_groups_with_non_existing_group(confit_path):
+    config_content = """
+    groups:
+      testgroup:
+        name: foo
+        dest: /tmp/dest
+        install_files:
+          - [src.txt, dst.txt]
+    """
+    with tempfile.TemporaryDirectory() as tempdir:
+        config_file = Path(tempdir) / ".conf.it"
+        with open(config_file, "w") as f:
+            f.write(config_content)
+        confit_binary = Path(tempdir) / "confit"
+        shutil.copy(confit_path, confit_binary)
+        # print the complete group data
+        result = subprocess.run([confit_binary, 'groups', 'bla'], capture_output=True, text=True, cwd=tempdir)
+        print(result.stdout)
+        assert result.returncode == 1
 
 
 def test_confit_diff_differences(confit_path):
