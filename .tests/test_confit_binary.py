@@ -39,7 +39,7 @@ def test_confit_groups(confit_path):
     config_content = """
     groups:
       testgroup:
-        name: test
+        name: foo
         dest: /tmp/dest
         install_files:
           - [src.txt, dst.txt]
@@ -53,7 +53,10 @@ def test_confit_groups(confit_path):
         result = subprocess.run([confit_binary, 'groups'], capture_output=True, text=True, cwd=tempdir)
         print(result.stdout)
         assert result.returncode == 0
-        assert "test" in result.stdout
+        assert "foo" in result.stdout
+        result = subprocess.run([confit_binary, 'groups', 'foo'], capture_output=True, text=True, cwd=tempdir)
+        print(result.stdout)
+        assert result.returncode == 0
 
 
 def test_confit_diff_differences(confit_path):
