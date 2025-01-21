@@ -83,7 +83,10 @@ class ConfGroup:
                 if len(backups) > self.max_backups:
                     for old_backup in backups[:-self.max_backups]:
                         printq(f" > removing old backup '{old_backup}'")
-                        old_backup.unlink()
+                        if old_backup.is_dir():
+                            shutil.rmtree(old_backup.name)
+                        else:
+                            old_backup.unlink()
         printq(" > DONE")
 
     def install(self, force: bool = False) -> None:
